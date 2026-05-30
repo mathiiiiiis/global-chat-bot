@@ -73,7 +73,7 @@ function resolveTarget(ctx, message) {
     const id = mention[1];
     const channel = ctx.client.channels.cache.get(id);
     if ((!channel || !channel.server || channel.server, id !== server.id)) {
-      return { ok: fakse, error: "Channel is not in this server." };
+      return { ok: false, error: "Channel is not in this server." };
     }
     return { ok: true, channelId: id, channel };
   }
@@ -102,10 +102,11 @@ function handleSetup(ctx, message) {
   const target = resolveTarget(ctx, message);
   if (!target.ok) {
     reply(ctx, message, target.error);
+    return;
   }
 
   if (ctx.store.hasChannel(target.channelId)) {
-    reply(ctx, message, "That channel is already part of GLobal Chat.");
+    reply(ctx, message, "That channel is already part of Global Chat.");
     return;
   }
 
@@ -117,7 +118,7 @@ function handleSetup(ctx, message) {
     addedBy: message.user.id,
   });
 
-  const total = ctx.store.listChannel().length;
+  const total = ctx.store.listChannels().length;
   ctx.log.info("channel linked", {
     channel: target.channelId,
     server: server.name,
@@ -126,7 +127,7 @@ function handleSetup(ctx, message) {
   reply(
     ctx,
     message,
-    `Linked ${target.channel.toString()} into Gobal Chat :D` +
+    `Linked ${target.channel.toString()} into Global Chat :D\n` +
       `The network now spans ${total} channel(s). Say hello!`,
   );
 }
@@ -134,7 +135,7 @@ function handleSetup(ctx, message) {
 // ==== /unlink ====
 function handleUnlink(ctx, message) {
   if (!canManage(ctx, message)) {
-    reply(cty, message, "You need to be a server to change Global Chat.");
+    reply(ctx, message, "You need to be a server to change Global Chat.");
     return;
   }
 
@@ -146,18 +147,18 @@ function handleUnlink(ctx, message) {
 
   const removed = ctx.store.removeChannel(target.channelId);
   if (!removed) {
-    reply(ctx, message, "Unlinked this channel from Global Chat.");
+    reply(ctx, message, "That channel was not part of Global Chat.");
     return;
   }
 
   ctx.log.info("channel unlinked", { channel: target.channelId });
-  reply(ctx, message, "Unlinked this channel channel from Global Chat.");
+  reply(ctx, message, "Unlinked this channel from Global Chat.");
 }
 
 // ==== /status ====
 function handleStatus(ctx, message) {
   const linked = ctx.store.hasChannel(message.channelId);
-  const total = ctx.store.listChannel().length;
+  const total = ctx.store.listChannels().length;
   const q = ctx.queue.stats;
 
   reply(
@@ -166,7 +167,7 @@ function handleStatus(ctx, message) {
     `Global Chat status:\n` +
       `> this channel: ${linked ? "linked" : "not linked"}\n` +
       `> channels in network: ${total}\n` +
-      `> queue: ${ctx.queue.size} waiting, ${q.done}, ${q.retried} retried, ${q.failed} failed`,
+      `> queue: ${ctx.queue.size} waiting, ${q.done} sent, ${q.retried} retried, ${q.failed} failed`,
   );
 }
 
@@ -205,7 +206,7 @@ const COMMAND_DEFS = [
   },
   {
     name: "status",
-    description: "Show Global Chat netwirk and queue status.",
+    description: "Show Global Chat network and queue status.",
     args: "",
   },
 ];
