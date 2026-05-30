@@ -23,6 +23,20 @@ const RE_QUOTE = /\[q:(\d+)\]/g;
 const RE_ROLE = /\[r:(\d+)\]/g;
 const RE_COMMAND = /^\/[^:\s]*:\d+( .*)?$/m;
 
+const knownBotIds = new Set();
+const RE_COMMAND_TARGET = /^\/[^:\s]*:(\d+)/gm;
+
+function noteCommandBots(content) {
+  if (!content) return;
+  for (const match of content.matchAll(RE_COMMAND_TARGET)) {
+    knownBotIds.add(match[1]);
+  }
+}
+
+function isKnownBot(id) {
+  return knownBotIds.has(id);
+}
+
 //grouping state
 const lastAuthorByChannel = new Map();
 
@@ -81,7 +95,7 @@ function attachmentUrls(message, cdnUrl) {
 
   const urls = [];
   for (const att of attachments) {
-    if (att.provider === "google_drive" && att.field) {
+    if (att.provider === "google_drive" && att.fileId) {
       urls.push(`https://drive.google.com/uc?id=${att.fileId}`);
     } else if (att.path) {
       urls.push(cdnUrl + att.path);
@@ -197,4 +211,11 @@ function broadcast(ctx, message) {
   return targets.length;
 }
 
-module.exports = { broadcast, sanitizeMentions, formatRelay, buildReplyContext };
+module.exports = {
+  broadcast,
+  sanitizeMentions,
+  formatRelay,
+  buildReplyContext,
+  noteCommandBots,
+  isKnownBot,
+};

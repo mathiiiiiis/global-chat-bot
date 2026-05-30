@@ -77,7 +77,7 @@ class Store {
     this.data.channels[entry.channelId] = {
       channelId: entry.channelId,
       serverId: entry.serverId,
-      addedName: entry.serverName,
+      serverName: entry.serverName,
       addedBy: entry.addedBy,
       addedAt: Date.now(),
     };

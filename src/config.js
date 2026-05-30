@@ -17,7 +17,6 @@
 // > GC_API_URL       – override api base (self-hosted/localhost testing)
 // > GC_WS_URL        – override websocket base (same)
 
-const { register } = require("module");
 const path = require("path");
 
 try {
@@ -67,7 +66,7 @@ const config = {
   wsUrl: process.env.GC_WS_URL || undefined,
 
   //CDN base used to build attachment URLs
-  cdnUrl: (process.env.GC_CDN_URL || "https://cdn.nerimity.com/").replace(/\?$/, "/"),
+  cdnUrl: (process.env.GC_CDN_URL || "https://cdn.nerimity.com/").replace(/\/?$/, "/"),
 };
 
 module.exports = config;

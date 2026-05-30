@@ -14,7 +14,7 @@ const config = require("./config.js");
 const { makeLogger, setLevel } = require("./logger.js");
 const { RateQueue } = require("./rateQueue.js");
 const { Store } = require("./store.js");
-const { broadcast } = require("./relay.js");
+const { broadcast, noteCommandBots, isKnownBot } = require("./relay.js");
 const { handleCommand, COMMAND_DEFS } = require("./commands.js");
 const { refreshPresence } = require("./presence.js");
 
@@ -67,17 +67,47 @@ client.on(Events.Ready, () => {
 
 client.on(Events.MessageCreate, (message) => {
   try {
-    if (message.user && config.ignoredUsers.has(message.user.id)) {
-      log.debug("dropped message from ignored user", { user: message.user.id });
-      return;
+    log.debug("AUTHOR DUMP", {
+      username: message.user && message.user.username,
+      userId: message.user && message.user.id,
+      userBot: message.user && message.user.bot,
+      rawCreatedByBot: message.raw && message.raw.createdBy && message.raw.createdBy.bot,
+      rawCreatedByKeys:
+        message.raw && message.raw.createdBy ? Object.keys(message.raw.createdBy) : null,
+      hasMember: !!message.member,
+      roleIds: message.member && message.member.roleIds,
+      roles:
+        message.member && message.member.roles
+          ? message.member.roles.map((r) => ({
+              id: r && r.id,
+              name: r && r.name,
+              botRole: r && r.botRole,
+            }))
+          : null,
+    });
+    //learn bot ids from any command pattern in content
+    noteCommandBots(message.content);
+
+    if (message.user) {
+      if (config.ignoredUsers.has(message.user.id)) {
+        log.debug("dropped message from ignored user", { user: message.user.id });
+        return;
+      }
+
+      const member = message.member;
+      const hasBotRole = member && member.roles.some((r) => r && r.botRole);
+      const rawBot = message.raw && message.raw.createdBy && message.raw.createdBy.bot;
+      const looksLikeBot = hasBotRole || rawBot || message.user.bot || isKnownBot(message.user.id);
+      if (looksLikeBot && !config.relayBots) {
+        log.debug("dropped message from bot", {
+          user: message.user.id,
+          name: message.user.username,
+          via: hasBotRole ? "role" : rawBot ? "raw" : message.user.bot ? "cache" : "learned",
+        });
+        return;
+      }
     }
-    if (message.user.bot && !config.relayBots) {
-      log.debug("dropped message from bot", {
-        user: message.user.id,
-        name: message.user.username,
-      });
-      return;
-    }
+
     if (message.command) {
       handleCommand(ctx, message);
     } else {
