@@ -24,20 +24,19 @@ Built on [`@nerimity/nerimity.js`](https://github.com/nerimity/nerimity.js).
 - All outbound calls go through a single rate-aware queue: one call in flight at a
   time, a minimum gap between calls, exponential backoff with jitter, and reactive
   backoff that honours the server's retry hint when it sends one.
-- Quotes and replies are carried across, and attachments/images are relayed by URL
-  (Nerimity auto-embeds them - no re-upload).
+- Quotes and replies are carried across, and attachments/images are relayed by URL.
 - Repeated messages from the same author collapse the header, the way the client
   groups native messages.
 - Mentions are flattened to plain text before relaying, so a relay never pings a
   random stranger who happens to share an id.
 - Other bots are ignored by default, and commands (aimed at any bot) are never
-  relayed - so it will not echo-loop with other relay bots or remote-trigger them.
+  relayed; so it will not echo-loop with other relay bots or remote-trigger them.
 - A debug run with deep logging so you can actually trace what went wrong.
 
 ## Quick start
 
 ```bash
-git clone <your-fork-url> global-chat-bot
+git clone https://github.com/mathiiiiiis/global-chat-bot
 cd global-chat-bot
 npm install
 
@@ -68,7 +67,7 @@ to each other. By default only **server admins** can run setup/unlink (set
 
 ## Configuration
 
-Everything is environment variables - see `.env.example` for the full list. The ones
+Everything is environment variables, see `.env.example` for the full list. The ones
 you are most likely to touch:
 
 | Variable | Default | What it does |
@@ -94,7 +93,7 @@ When relays misbehave (and across enough servers, they eventually will), run:
 npm run debug          # raises the log level to debug (overrides GC_LOG_LEVEL)
 ```
 
-You get timestamped, scoped lines for every step - command parsing, each
+You get timestamped, scoped lines for every step; command parsing, each
 enqueue/dequeue, spacing waits, every retry and backoff window, store writes, and any
 send that gets dropped and why. Pipe it to a file or journald; colours switch off
 automatically when the output is not a terminal.
