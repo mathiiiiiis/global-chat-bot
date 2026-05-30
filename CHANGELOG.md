@@ -112,6 +112,7 @@ Project
 - Multi-bot echo loop: the bot relayed other relay bots (and their relays of its
   relays), stacking prefixes forever. Other bots are now ignored by default.
 - Links showing page embed
+- commands aimed at other bots were relayed as chat; now filtered by pattern.
 
 [Unreleased]: https://github.com/mathiiiiiis/global-chat-bot/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/mathiiiiiis/global-chat-bot/releases/tag/v0.1.0

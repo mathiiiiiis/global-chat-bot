@@ -21,6 +21,7 @@ const RE_USER = /\[@:(\d+)\]/g;
 const RE_CHANNEL = /\[#:(\d+)\]/g;
 const RE_QUOTE = /\[q:(\d+)\]/g;
 const RE_ROLE = /\[r:(\d+)\]/g;
+const RE_COMMAND = /^\/[^:\s]*:\d+( .*)?$/m;
 
 //grouping state
 const lastAuthorByChannel = new Map();
@@ -135,7 +136,7 @@ function broadcast(ctx, message) {
   }
 
   //skip commands; handled elsewhere
-  if (message.command) {
+  if (message.command || (message.content && RE_COMMAND.test(message.content))) {
     log.trace("skip relay: command message");
     return 0;
   }
