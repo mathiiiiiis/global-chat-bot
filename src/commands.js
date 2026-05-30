@@ -72,7 +72,7 @@ function resolveTarget(ctx, message) {
   if (mention) {
     const id = mention[1];
     const channel = ctx.client.channels.cache.get(id);
-    if ((!channel || !channel.server || channel.server, id !== server.id)) {
+    if (!channel || !channel.server || channel.server.id !== server.id) {
       return { ok: false, error: "Channel is not in this server." };
     }
     return { ok: true, channelId: id, channel };
