@@ -51,6 +51,9 @@ const config = {
   //leave undefined for public nerimity.com instance
   apiUrl: process.env.GC_API_URL || undefined,
   wsUrl: process.env.GC_WS_URL || undefined,
+
+  //CDN base used to build attachment URLs
+  cdnUrl: (process.env.GC_CDN_URL || "https://cdn.nerimity.com/").replace(/\?$/, "/"),
 };
 
 module.exports = config;

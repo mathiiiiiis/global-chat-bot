@@ -70,13 +70,33 @@ function buildReplyContext(message, client) {
   return lines.join("\n");
 }
 
+//build embeddable URLs for messages attachments
+//
+// > local provider: cdnBase + path
+// > google_drive provider: a drive.google.com/uc link built from fileId
+function attachmentUrls(message, cdnUrl) {
+  const attachments = message.raw && message.raw.attachments;
+  if (!attachments || !attachments.length) return [];
+
+  const urls = [];
+  for (const att of attachments) {
+    if (att.provider === "google_drive" && att.field) {
+      urls.push(`https://drive.google.com/uc?id=${att.fileId}`);
+    } else if (att.path) {
+      urls.push(cdnUrl + att.path);
+    }
+  }
+  return urls;
+}
+
 //build text that gets send into other channels
 //format is interntionally plain and easy to tweak
 // > with header: **username** • ServerName
 // >              (reply context if any)
 // >              message body
-// > grouped:     header dropped, reply context + body only
-function formatRelay(message, originServerName, client, showHeader) {
+// >              attachment url(s), each on its own line so they embed
+// > grouped:     header dropped, rest unchanged
+function formatRelay(message, originServerName, client, showHeader, cdnUrl) {
   const username = message.user ? message.user.username : "unknown";
 
   const quoteMap = new Map();
@@ -87,23 +107,18 @@ function formatRelay(message, originServerName, client, showHeader) {
 
   const body = sanitizeMentions(message.content, client, quoteMap);
   const replyContext = buildReplyContext(message, client);
-
-  //attachment relay not yet implemented
-  //(planned: pass CDN url through)
-  const attachments = message.raw && message.raw.attachments;
-  const attachmentNote =
-    attachments && attachments.length
-      ? `\n_(${attachments.length} attachment(s) not relayed)_`
-      : "";
+  const attachmentLinks = attachmentUrls(message, cdnUrl);
 
   const header = showHeader ? `**${username}** • ${originServerName}\n` : "";
 
   const parts = [];
   if (replyContext) parts.push(replyContext);
   if (body) parts.push(body);
+  //each url on its own line
+  if (attachmentLinks.length) parts.push(attachmentLinks.join("\n"));
   if (!parts.length) parts.push("_(no text content)_");
 
-  return `${header}${parts.join("\n")}${attachmentNote}`;
+  return `${header}${parts.join("\n")}`;
 }
 
 // ==== broadcast ====
@@ -111,7 +126,7 @@ function formatRelay(message, originServerName, client, showHeader) {
 // ctx: { client, queue, store, log, config }
 // returns number of destination channels relay was queued for
 function broadcast(ctx, message) {
-  const { client, queue, store, log } = ctx;
+  const { client, queue, store, log, config } = ctx;
 
   //skip own messages
   if (client.user && message.user && message.user.id === client.user.id) {
@@ -166,7 +181,7 @@ function broadcast(ctx, message) {
     const showHeader = lastAuthorByChannel.get(target.channelId) !== authorId;
     lastAuthorByChannel.set(target.channelId, authorId);
 
-    const text = formatRelay(message, originServerName, client, showHeader);
+    const text = formatRelay(message, originServerName, client, showHeader, config.cdnUrl);
     const label = `relay->${target.serverName || target.channelId}`;
     queue
       .enqueue(label, () => channel.send(text, { silent: true }))
