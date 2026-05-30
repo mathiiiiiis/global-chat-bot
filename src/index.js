@@ -67,24 +67,6 @@ client.on(Events.Ready, () => {
 
 client.on(Events.MessageCreate, (message) => {
   try {
-    log.debug("AUTHOR DUMP", {
-      username: message.user && message.user.username,
-      userId: message.user && message.user.id,
-      userBot: message.user && message.user.bot,
-      rawCreatedByBot: message.raw && message.raw.createdBy && message.raw.createdBy.bot,
-      rawCreatedByKeys:
-        message.raw && message.raw.createdBy ? Object.keys(message.raw.createdBy) : null,
-      hasMember: !!message.member,
-      roleIds: message.member && message.member.roleIds,
-      roles:
-        message.member && message.member.roles
-          ? message.member.roles.map((r) => ({
-              id: r && r.id,
-              name: r && r.name,
-              botRole: r && r.botRole,
-            }))
-          : null,
-    });
     //learn bot ids from any command pattern in content
     noteCommandBots(message.content);
 
