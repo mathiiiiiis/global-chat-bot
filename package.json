@@ -1,0 +1,25 @@
+{
+  "name": "global-chat-but-better",
+  "version": "0.1.0",
+  "description": "Open-source Global Chat bot for Nerimity",
+  "keywords": [
+    "bot",
+    "global-chat",
+    "nerimity",
+    "open-source"
+  ],
+  "license": "MIT",
+  "author": "mathiiiiiis",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "debug": "node src/index.js --debug",
+    "register": "node src/registerCommands.js"
+  },
+  "dependencies": {
+    "@nerimity/nerimity.js": "^1.20.1"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
