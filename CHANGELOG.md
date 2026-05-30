@@ -48,6 +48,14 @@ Message handling
   rendered inline.
 - Attachment and image relay by URL: local CDN attachments and Google Drive
   attachments are relayed as links, which Nerimity auto-embeds (no re-upload).
+- Command-pattern filtering: commands aimed at any bot (not just this one) are
+  detected by pattern and never relayed. Previously only commands aimed at this
+  bot were skipped, so a command for another bot was relayed as plain text - and
+  since the relayed text was itself a valid command, it triggered that other bot
+  in the destination channel.
+- Hardened bot detection with several signals, checked in order of reliability:
+  an auto-assigned bot role, the bot flag on the raw message payload, the cached
+  user flag, and bot ids learned from observed command patterns.
 
 Presence and moderation
 
@@ -110,9 +118,11 @@ Project
 - Portainer deploys failed with "env file not found" because of the `env_file`
   directive; switched to variable substitution.
 - Multi-bot echo loop: the bot relayed other relay bots (and their relays of its
-  relays), stacking prefixes forever. Other bots are now ignored by default.
-- Links showing page embed
-- commands aimed at other bots were relayed as chat; now filtered by pattern.
+- Commands targeting other bots were relayed as chat and could remote-trigger
+  those bots across the network; now filtered by pattern.
+- The --debug and --trace command-line flags were overridden by GC_LOG_LEVEL in
+  the environment, so `npm run debug` stayed at the configured level. Explicit
+  command-line flags now take precedence over the env var.
 
 [Unreleased]: https://github.com/mathiiiiiis/global-chat-bot/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/mathiiiiiis/global-chat-bot/releases/tag/v0.1.0
