@@ -77,7 +77,7 @@ class Store {
     this.data.channels[entry.channelId] = {
       channelId: entry.channelId,
       serverId: entry.serverId,
-      addedBy: entry.serverName,
+      addedName: entry.serverName,
       addedBy: entry.addedBy,
       addedAt: Date.now(),
     };
@@ -104,7 +104,7 @@ class Store {
       }
     }
     if (removed) {
-      this.log.debug(`store remove server $${serverId}`, { channels: removed });
+      this.log.debug(`store remove server ${serverId}`, { channels: removed });
       this._scheduleSave();
     }
     return removed;
