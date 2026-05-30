@@ -51,6 +51,13 @@ const config = {
   //register slash commands automatically on boot
   registerOnStart: process.env.GC_REGISTER_ON_START === "1",
 
+  ignoredUsers: new Set(
+    (process.env.GC_IGNORE_USERS || "")
+      .split(",")
+      .map((id) => id.trim())
+      .filter(Boolean),
+  ),
+
   //instance overrides
   //leave undefined for public nerimity.com instance
   apiUrl: process.env.GC_API_URL || undefined,

@@ -67,6 +67,10 @@ client.on(Events.Ready, () => {
 
 client.on(Events.MessageCreate, (message) => {
   try {
+    if (message.user && config.ignoredUsers.has(message.user.id)) {
+      log.debug("dropped message from ignored user", { user: message.user.id });
+      return;
+    }
     if (message.command) {
       handleCommand(ctx, message);
     } else {
