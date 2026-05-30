@@ -206,7 +206,7 @@ function handleLinks(ctx, message) {
   reply(
     ctx,
     message,
-    `**Global Chat- links**\n` + `> Source code: ${REPO_URL}\n` + `> Author: ${AUTHOR_URL}`,
+    `**Global Chat- links**\n` + `> Source code: <${REPO_URL}>\n` + `> Author: <${AUTHOR_URL}>`,
   );
 }
 
