@@ -29,3 +29,6 @@ npm-debug.log*
 # Misc
 .cache/
 coverage/
+
+# yes
+src/data/*.json
