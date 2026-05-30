@@ -50,7 +50,7 @@ function formatRelay(message, originServerName, client) {
       : "";
 
   const text = body || "_(no text content)_";
-  return `**${username} • ${originServerName}\n${text}${attachmentNote}`;
+  return `**${username}** • ${originServerName}\n${text}${attachmentNote}`;
 }
 
 // ==== broadcast ====
@@ -84,7 +84,7 @@ function broadcast(ctx, message) {
     (message.channel && message.channel.server && message.channel.server.name) || "a server";
   const text = formatRelay(message, originServerName, client);
 
-  const targets = store.listChannel().filter((entry) => entry.channelId !== message.channelId);
+  const targets = store.listChannels().filter((entry) => entry.channelId !== message.channelId);
 
   if (!targets.length) {
     log.debug("nothing to relay to (only one channel in network)");
@@ -99,7 +99,7 @@ function broadcast(ctx, message) {
     const channel = client.channels.cache.get(target.channelId);
     if (!channel) {
       //in store but not cache? bot max have been removed from server. clean up to stop trying
-      log.warn("target channel missing from cache, ulinking", {
+      log.warn("target channel missing from cache, unlinking", {
         channel: target.channelId,
         server: target.serverName,
       });
@@ -114,7 +114,7 @@ function broadcast(ctx, message) {
         //already logged inside queue when it gave up
         //this catch just keeps rejection from becoming
         //an unhandled promise
-        log.debug(`relay task failed for ${label}`);
+        log.debug(`relay task failed for ${label}`, err);
       });
   }
 
