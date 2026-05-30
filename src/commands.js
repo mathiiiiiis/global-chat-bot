@@ -124,6 +124,7 @@ function handleSetup(ctx, message) {
     server: server.name,
     total,
   });
+  if (ctx.refreshPresence) ctx.refreshPresence();
   reply(
     ctx,
     message,
@@ -152,6 +153,7 @@ function handleUnlink(ctx, message) {
   }
 
   ctx.log.info("channel unlinked", { channel: target.channelId });
+  if (ctx.refreshPresence) ctx.refreshPresence();
   reply(ctx, message, "Unlinked this channel from Global Chat.");
 }
 

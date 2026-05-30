@@ -16,6 +16,7 @@ const { RateQueue } = require("./rateQueue.js");
 const { Store } = require("./store.js");
 const { broadcast } = require("./relay.js");
 const { handleCommand, COMMAND_DEFS } = require("./commands.js");
+const { refreshPresence } = require("./presence.js");
 
 setLevel();
 const log = makeLogger("bot");
@@ -52,12 +53,16 @@ const ctx = {
   log: log.child("relay"),
 };
 
+//let command/relay trigger presence refresh
+ctx.refreshPresence = () => refreshPresence(ctx);
+
 // ==== events ====
 client.on(Events.Ready, () => {
   log.info(
     `connected as ${client.user ? client.user.username : "?"} ` +
       `(spacing ${config.minGapMs}ms, ${store.listChannels().length} channel(s) linked)`,
   );
+  ctx.refreshPresence();
 });
 
 client.on(Events.MessageCreate, (message) => {
@@ -79,7 +84,10 @@ client.on(Events.ServerJoined, (server) => {
 
 client.on(Events.ServerLeft, (server) => {
   const removed = store.removeServer(server.id);
-  if (removed) log.info(`left "${server.name}", unlinked ${removed} channel(s)`);
+  if (removed) {
+    log.info(`left "${server.name}", unlinked ${removed} channel(s)`);
+    ctx.refreshPresence();
+  }
 });
 
 client.on(Events.ServerChannelDeleted, (data) => {
@@ -88,6 +96,7 @@ client.on(Events.ServerChannelDeleted, (data) => {
     log.info("a linked channel was deleted, unlinked it", {
       channel: data.channelId,
     });
+    ctx.refreshPresence();
   }
 });
 
