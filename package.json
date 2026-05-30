@@ -10,6 +10,7 @@
   ],
   "license": "MIT",
   "author": "mathiiiiiis",
+  "type": "commonjs",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
