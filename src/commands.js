@@ -173,6 +173,43 @@ function handleStatus(ctx, message) {
   );
 }
 
+//links
+//
+//used by /links refrenced from /help
+const REPO_URL = "https://github.com/mathiiiiiis/global-chat-bot";
+const AUTHOR_URL = "https://mathiiis.de";
+
+// ==== /help ====
+function handleHelp(ctx, message) {
+  reply(
+    ctx,
+    message,
+    `**Global chat** links channels across servers into one shared conversation.\n` +
+      `\n` +
+      `Commands:\n` +
+      `> /setup <here|#channel> - link a channel into the network\n` +
+      `> /unlink <here|#channel> - remove a channel from the network\n` +
+      `> /status - show network and queue status\n` +
+      `> /links - source code and author links\n` +
+      `> /help - this message lol\n` +
+      `\n` +
+      `Run /setup in two or more channels across different servers and they are ` +
+      `connected. Messages, replies, quotes, and images all carry across. ` +
+      `Edits and deletion syncs are on the way!` +
+      `\n` +
+      `Setup and unlink are admin-only.`,
+  );
+}
+
+// ==== /links ====
+function handleLinks(ctx, message) {
+  reply(
+    ctx,
+    message,
+    `**Global Chat- links**\n` + `> Source code: ${REPO_URL}\n` + `> Author: ${AUTHOR_URL}`,
+  );
+}
+
 //dispatch
 function handleCommand(ctx, message) {
   const name = message.command.name;
@@ -188,6 +225,10 @@ function handleCommand(ctx, message) {
       return handleUnlink(ctx, message);
     case "status":
       return handleStatus(ctx, message);
+    case "help":
+      return handleHelp(ctx, message);
+    case "links":
+      return handleLinks(ctx, message);
     default:
       ctx.log.trace(`ignoring unknown command "${name}`);
   }
@@ -209,6 +250,16 @@ const COMMAND_DEFS = [
   {
     name: "status",
     description: "Show Global Chat network and queue status.",
+    args: "",
+  },
+  {
+    name: "help",
+    description: "Show what Global Chat does and its commands.",
+    args: "",
+  },
+  {
+    name: "links",
+    description: "Get the source code and author links.",
     args: "",
   },
 ];
