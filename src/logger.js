@@ -85,9 +85,9 @@ function makeLogger(scope) {
     scope,
     error: (msg, ...extra) => write("error", process.stderr, msg, extra),
     warn: (msg, ...extra) => write("warn", process.stderr, msg, extra),
-    info: (msg, ...extra) => write("info", process.stderr, msg, extra),
-    debug: (msg, ...extra) => write("debug", process.stderr, msg, extra),
-    trace: (msg, ...extra) => write("trace", process.stderr, msg, extra),
+    info: (msg, ...extra) => write("info", process.stdout, msg, extra),
+    debug: (msg, ...extra) => write("debug", process.stdout, msg, extra),
+    trace: (msg, ...extra) => write("trace", process.stdout, msg, extra),
     child: (sub) => makeLogger(`${scope}:${sub}`),
   };
 }
