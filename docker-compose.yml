@@ -1,0 +1,23 @@
+# Slash commands: set GC_REGISTER_ON_START=1 in .env for hands-off registration,
+# or run the one-off below once after first boot:
+# > docker compose run --rm bot node src/registerCommands.js
+
+services:
+  bot:
+    build: .
+    image: global-chat-bot
+    container_name: global-chat-bot
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      GC_DATA_FILE: /data/synced.json
+    volumes:
+      - gc-data:/data
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  gc-data:

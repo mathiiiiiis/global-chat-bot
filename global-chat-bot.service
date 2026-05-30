@@ -1,0 +1,25 @@
+# Install:
+# > sudo cp deploy/global-chat-bot.service /etc/systemd/system/
+# > edit the paths/user below to match your setup
+# > sudo systemctl daemon-reload
+# > sudo systemctl enable --now global-chat-bot
+#
+# Logs:  journalctl -u global-chat-bot -f
+# Config lives in .env file in WorkingDirectory
+
+[Unit]
+Description=Global Chat Bot (Nerimity)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=mathis
+WorkingDirectory=/opt/global-chat-bot
+ExecStart=/usr/bin/node src/index.js
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=15
+
+[Install]
+WantedBy=multi-user.target

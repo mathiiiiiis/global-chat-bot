@@ -15,7 +15,7 @@ const { makeLogger, setLevel } = require("./logger.js");
 const { RateQueue } = require("./rateQueue.js");
 const { Store } = require("./store.js");
 const { broadcast } = require("./relay.js");
-const { handleCommand } = require("./commands.js");
+const { handleCommand, COMMAND_DEFS } = require("./commands.js");
 
 setLevel();
 const log = makeLogger("bot");
@@ -114,5 +114,17 @@ process.on("SIGINT", () => shutdown("SIGINT"));
 process.on("SIGTERM", () => shutdown("SIGTERM"));
 
 //go
-log.info("logging in...");
-client.login(config.token);
+async function start() {
+  if (config.registerOnStart) {
+    try {
+      await client.updateCommands(config.token, COMMAND_DEFS);
+      log.info(`registering ${COMMAND_DEFS.length} command(s) on start`);
+    } catch (err) {
+      log.error("command registration on start failed, continuing", err);
+    }
+  }
+  log.info("logging in...");
+  client.login(config.token);
+}
+
+start();

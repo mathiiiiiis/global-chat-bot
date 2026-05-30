@@ -17,6 +17,7 @@
 // > GC_API_URL       – override api base (self-hosted/localhost testing)
 // > GC_WS_URL        – override websocket base (same)
 
+const { register } = require("module");
 const path = require("path");
 
 try {
@@ -46,6 +47,9 @@ const config = {
   //by default only server admins (or owner)
   //flip for casual/private instances
   allowAnyone: process.env.GC_ALLOW_ANYONE === "1",
+
+  //register slash commands automatically on boot
+  registerOnStart: process.env.GC_REGISTER_ON_START === "1",
 
   //instance overrides
   //leave undefined for public nerimity.com instance
