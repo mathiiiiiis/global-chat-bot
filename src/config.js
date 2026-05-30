@@ -19,6 +19,10 @@
 
 const path = require("path");
 
+try {
+  process.loadEnvFile(path.join(__dirname, "..", ".env"));
+} catch {}
+
 function num(value, fallback) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
