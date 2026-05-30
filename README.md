@@ -9,7 +9,7 @@ Yea.
 
 ---
 
-It's also meant to be **readable**; the point is that anyone can crack it open and
+It's also meant to be **readable** - the point is that anyone can crack it open and
 get a rough idea of how a global-chat bot is put together. The headline feature is a
 proper **outbound queue** that paces and retries API calls, because Nerimity
 rate-limits hard and a naive "send to every channel at once" relay falls over the
@@ -30,12 +30,14 @@ Built on [`@nerimity/nerimity.js`](https://github.com/nerimity/nerimity.js).
   groups native messages.
 - Mentions are flattened to plain text before relaying, so a relay never pings a
   random stranger who happens to share an id.
+- Other bots are ignored by default, and commands (aimed at any bot) are never
+  relayed - so it will not echo-loop with other relay bots or remote-trigger them.
 - A debug run with deep logging so you can actually trace what went wrong.
 
 ## Quick start
 
 ```bash
-git clone https://github.com/mathiiiiiis/global-chat-bot
+git clone <your-fork-url> global-chat-bot
 cd global-chat-bot
 npm install
 
@@ -56,6 +58,8 @@ Add the bot to a server, then in the channel you want to link:
 /setup #general      link a specific channel by name or with the picker
 /unlink here         remove the current channel from the network
 /status              show network size and queue health
+/help                what the bot does and its commands
+/links               source code and author links
 ```
 
 Do `/setup` in two or more channels across different servers and they are now talking
@@ -73,6 +77,9 @@ you are most likely to touch:
 | `GC_MIN_GAP_MS` | `350` | Minimum spacing between outbound API calls |
 | `GC_MAX_ATTEMPTS` | `5` | Retries before a send is dropped |
 | `GC_ALLOW_ANYONE` | `0` | `1` lets any member run setup |
+| `GC_RELAY_BOTS` | `0` | `1` relays other bots too (causes echo loops - leave off) |
+| `GC_IGNORE_USERS` | (empty) | Comma-separated user ids to drop entirely |
+| `GC_REGISTER_ON_START` | `0` | `1` re-registers slash commands on every boot |
 | `GC_LOG_LEVEL` | `info` | `error` `warn` `info` `debug` `trace` |
 | `GC_CDN_URL` | `https://cdn.nerimity.com/` | CDN base for building attachment URLs |
 
@@ -84,7 +91,7 @@ at it.
 When relays misbehave (and across enough servers, they eventually will), run:
 
 ```bash
-npm run debug          # equivalent to GC_LOG_LEVEL=trace
+npm run debug          # raises the log level to debug (overrides GC_LOG_LEVEL)
 ```
 
 You get timestamped, scoped lines for every step - command parsing, each
@@ -100,7 +107,7 @@ message in a linked channel
         v
   index.js (message handler)
         |
-   command? --yes--> commands.js  (/setup /unlink /status)
+   command? --yes--> commands.js  (/setup /unlink /status /help /links)
         |
         no
         v
@@ -115,8 +122,9 @@ message in a linked channel
 | `src/index.js` | Entrypoint, client setup, event wiring, shutdown |
 | `src/rateQueue.js` | The queue: pacing, retries, backoff, backpressure |
 | `src/relay.js` | Broadcast fan-out, mention/quote/attachment handling, header grouping |
-| `src/commands.js` | `/setup`, `/unlink`, `/status` + permission checks |
+| `src/commands.js` | `/setup`, `/unlink`, `/status`, `/help`, `/links` + permission checks |
 | `src/store.js` | JSON persistence for the linked-channel set |
+| `src/presence.js` | Sets the bot activity line from network size |
 | `src/logger.js` | Leveled, scoped logger |
 | `src/config.js` | All tunables, read from the environment |
 | `src/registerCommands.js` | One-off slash-command registration |
