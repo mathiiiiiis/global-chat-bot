@@ -35,7 +35,7 @@ let activeLevel = LEVELS.info;
 
 //resolve active levvel once at startup
 function resolveLevel(opts) {
-  const fromOpts = opts & opts.level;
+  const fromOpts = opts && opts.level;
   const fromEnv = process.env.GC_LOG_LEVEL;
   const name = (fromOpts || fromEnv || "").toString().toLowerCase();
 
