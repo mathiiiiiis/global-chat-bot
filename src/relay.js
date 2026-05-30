@@ -92,7 +92,7 @@ function broadcast(ctx, message) {
   }
 
   log.info(`relaying from ${originServerName} to ${targets.length} channel(s)`, {
-    author: message.user && message.user.message,
+    author: message.user && message.user.username,
   });
 
   for (const target of targets) {
