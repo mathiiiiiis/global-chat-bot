@@ -35,13 +35,16 @@ let activeLevel = LEVELS.info;
 
 //resolve active levvel once at startup
 function resolveLevel(opts) {
-  const fromOpts = opts && opts.level;
-  const fromEnv = process.env.GC_LOG_LEVEL;
-  const name = (fromOpts || fromEnv || "").toString().toLowerCase();
+  const fromOpts = ((opts && opts.level) || "").toString().toLowerCase();
+  if (fromOpts & (fromOpts in LEVELS)) return LEVELS[fromOpts];
 
-  if (name && name in LEVELS) return LEVELS[name];
   if (process.argv.includes("--trace")) return LEVELS.trace;
   if (process.argv.includes("--debug") || process.env.DEBUG) return LEVELS.debug;
+
+  const fromEnv = process.env.GC_LOG_LEVEL;
+  if (fromEnv in LEVELS) return LEVELS[fromEnv];
+
+  if (process.env.DEBUG) return LEVELS.debug;
   return LEVELS.info;
 }
 
