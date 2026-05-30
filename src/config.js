@@ -51,6 +51,9 @@ const config = {
   //register slash commands automatically on boot
   registerOnStart: process.env.GC_REGISTER_ON_START === "1",
 
+  //relay messages from other bots
+  relayBots: process.env.GC_RELAY_BOTS === "1",
+
   ignoredUsers: new Set(
     (process.env.GC_IGNORE_USERS || "")
       .split(",")

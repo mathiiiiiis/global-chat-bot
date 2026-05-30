@@ -71,6 +71,13 @@ client.on(Events.MessageCreate, (message) => {
       log.debug("dropped message from ignored user", { user: message.user.id });
       return;
     }
+    if (message.user.bot && !config.relayBots) {
+      log.debug("dropped message from bot", {
+        user: message.user.id,
+        name: message.user.username,
+      });
+      return;
+    }
     if (message.command) {
       handleCommand(ctx, message);
     } else {
