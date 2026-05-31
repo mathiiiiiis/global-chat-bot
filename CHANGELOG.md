@@ -9,6 +9,11 @@ versions.
 
 ## [Unreleased]
 
+### Added
+
+- Server names now get assigned a deterministic color based on the server ID,
+  so the color always stays the same.
+
 ### Fixed
 
 - Header grouping now keys on author *and* origin server, so a message relayed
