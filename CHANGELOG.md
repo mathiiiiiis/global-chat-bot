@@ -9,7 +9,11 @@ versions.
 
 ## [Unreleased]
 
-Nothing yet.
+### Fixed
+
+- Header grouping now keys on author *and* origin server, so a message relayed
+  from the same user but a different server still shows its header (and the
+  source server name) instead of being silently grouped with the previous one.
 
 ## [0.1.1] - 2026-05-31
 
