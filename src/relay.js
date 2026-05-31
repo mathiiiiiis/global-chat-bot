@@ -38,7 +38,7 @@ function isKnownBot(id) {
 }
 
 //grouping state
-const GROUP_WINDOW_MS = 5 * 50 * 1000;
+const GROUP_WINDOW_MS = 5 * 60 * 1000;
 const lastAuthorByChannel = new Map();
 
 // ==== edit/delete tracking =====
