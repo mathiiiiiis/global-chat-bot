@@ -11,6 +11,29 @@ versions.
 
 Nothing yet.
 
+## [0.1.1] - 2026-05-31
+
+### Added
+
+- Edit and delete propagation: editing or deleting an origin message now
+  updates or removes its relayed copies. Tracking is in-memory with a one-hour
+  TTL and a hard cap, consistent with the library only emitting updates for
+  messages still in its own cache.
+- `/links` now includes a Nerimity support-server invite.
+
+### Fixed
+
+- @everyone / @someone mass-ping markup ([@:e] / [@:s]) was relayed verbatim and
+  could ping a whole server when the bot had the permission. The mention regex
+  only matched numeric ids, so the special markup slipped through; it is now
+  rendered as harmless text, including inside quoted messages.
+- Removed a stray debug log.
+
+### Changed
+
+- README accuracy and polish, and `/help` text updated now that edit/delete sync
+  has shipped.
+
 ## [0.1.0] - 2026-05-30
 
 Initial release. A from-scratch, open-source take on a Nerimity "Global Chat"
@@ -124,5 +147,6 @@ Project
   the environment, so `npm run debug` stayed at the configured level. Explicit
   command-line flags now take precedence over the env var.
 
-[Unreleased]: https://github.com/mathiiiiiis/global-chat-bot/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/mathiiiiiis/global-chat-bot/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/mathiiiiiis/global-chat-bot/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/mathiiiiiis/global-chat-bot/releases/tag/v0.1.0
