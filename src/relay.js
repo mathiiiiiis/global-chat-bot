@@ -288,7 +288,7 @@ function broadcast(ctx, message) {
   const authorId = message.user ? message.user.id : "?";
   const originServerId =
     (message.channel && message.channel.server && message.channel.server.id) || "?";
-  const groupKey = `${authorId}@{originServerId}`;
+  const groupKey = `${authorId}@${originServerId}`;
 
   pruneTracked(); //drop expired before adding new
 
@@ -309,7 +309,7 @@ function broadcast(ctx, message) {
     const last = lastAuthorByChannel.get(target.channelId);
     const now = Date.now();
     const showHeader = !last || last.key !== groupKey || now - last.at > GROUP_WINDOW_MS;
-    lastAuthorByChannel.set(target.channelId, { groupKey, at: now });
+    lastAuthorByChannel.set(target.channelId, { key: groupKey, at: now });
 
     const text = formatRelay(message, originServerName, client, showHeader, config.cdnUrl);
     const label = `relay->${target.serverName || target.channelId}`;
