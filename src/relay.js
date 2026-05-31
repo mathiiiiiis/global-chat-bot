@@ -17,7 +17,7 @@
 //nerimity encodes these inline. same markup librarys own toString()
 //methods produce
 // > [@:id] user    [#:id] channel    [q:id] quoted message     [r:id] role
-const RE_USER = /\[@:(\d+)\]/g;
+const RE_USER = /\[@:(\d+|[es])\]/g;
 const RE_CHANNEL = /\[#:(\d+)\]/g;
 const RE_QUOTE = /\[q:(\d+)\]/g;
 const RE_ROLE = /\[r:(\d+)\]/g;
@@ -56,6 +56,8 @@ function sanitizeMentions(content, client, quoteMap) {
   if (!content) return "";
   return content
     .replace(RE_USER, (_, id) => {
+      if (id === "e") return "(at)everyone";
+      if (id === "s") return "(at)someone";
       const user = client.users.cache.get(id);
       return "@" + (user ? user.username : "someone");
     })
@@ -71,6 +73,7 @@ function sanitizeMentions(content, client, quoteMap) {
       const snip = snippet(q.content, 80);
       return who ? `quoted: \u201c${who}: ${snip}\u201d` : `\u201c${snip}\u201d`;
     })
+    .replace(/@everyone/gi, "(at)everyone")
     .trim();
 }
 
