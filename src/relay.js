@@ -38,6 +38,7 @@ function isKnownBot(id) {
 }
 
 //grouping state
+const GROUP_WINDOW_MS = 5 * 50 * 1000;
 const lastAuthorByChannel = new Map();
 
 // ==== edit/delete tracking =====
@@ -262,8 +263,10 @@ function broadcast(ctx, message) {
     }
 
     //header grouping decided PER destination channel
-    const showHeader = lastAuthorByChannel.get(target.channelId) !== authorId;
-    lastAuthorByChannel.set(target.channelId, authorId);
+    const last = lastAuthorByChannel.get(target.channelId);
+    const now = Date.now();
+    const showHeader = !last || last.authorId !== authorId || now - last.at > GROUP_WINDOW_MS;
+    lastAuthorByChannel.set(target.channelId, { authorId, at: now });
 
     const text = formatRelay(message, originServerName, client, showHeader, config.cdnUrl);
     const label = `relay->${target.serverName || target.channelId}`;
