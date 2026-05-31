@@ -172,6 +172,43 @@ function attachmentUrls(message, cdnUrl) {
   return urls;
 }
 
+//per-server name color
+//
+//assign each server a stable header color derived from its id
+//
+//nerimity renders [#hex]text[#reset] as colored text
+// > only hue varies; saturation and lightness are fixed (readability)
+function hashHue(serverId) {
+  let h = 0;
+  const s = String(serverId);
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return h % 360;
+}
+
+function hslToHex(hue, sat, light) {
+  const s = sat / 100;
+  const l = light / 100;
+  const a = s * Math.min(l, 1 - l);
+  const f = (n) => {
+    const k = (n + hue / 30) % 12;
+    const c = l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1));
+    return Math.round(255 * c)
+      .toString(16)
+      .padStart(2, "0");
+  };
+  return `#${f(0)}${f(8)}${f(4)}`;
+}
+
+function serverColor(serverId) {
+  return hslToHex(hashHue(serverId), 70, 65);
+}
+
+//wrap text in neris color markup. return text unchanged if no id
+function colorize(text, serverId) {
+  if (!serverId || serverId === "?") return text;
+  return `[${serverColor(serverId)}]${text}[#reset]`;
+}
+
 //build text that gets send into other channels
 //format is interntionally plain and easy to tweak
 // > with header: **username** • ServerName
@@ -192,7 +229,10 @@ function formatRelay(message, originServerName, client, showHeader, cdnUrl) {
   const replyContext = buildReplyContext(message, client);
   const attachmentLinks = attachmentUrls(message, cdnUrl);
 
-  const header = showHeader ? `**${username}** • ${originServerName}\n` : "";
+  const originServerId =
+    (message.channel && message.channel.server && message.channel.server.id) || "?";
+  const serverLabel = colorize(originServerName, originServerId);
+  const header = showHeader ? `**${username}** • ${serverLabel}\n` : "";
 
   const parts = [];
   if (replyContext) parts.push(replyContext);
