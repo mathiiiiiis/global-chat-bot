@@ -14,7 +14,13 @@ const config = require("./config.js");
 const { makeLogger, setLevel } = require("./logger.js");
 const { RateQueue } = require("./rateQueue.js");
 const { Store } = require("./store.js");
-const { broadcast, noteCommandBots, isKnownBot } = require("./relay.js");
+const {
+  broadcast,
+  noteCommandBots,
+  isKnownBot,
+  propagateEdit,
+  propagateDelete,
+} = require("./relay.js");
 const { handleCommand, COMMAND_DEFS } = require("./commands.js");
 const { refreshPresence } = require("./presence.js");
 
@@ -98,6 +104,25 @@ client.on(Events.MessageCreate, (message) => {
   } catch (err) {
     //throw here must never kill socket listener
     log.error("message handler threw", err);
+  }
+});
+
+//origin edited -> update relayed copies
+//delivered only while origin still in libs cache
+client.on(Events.MessageUpdate, (message) => {
+  try {
+    propagateEdit(ctx, message);
+  } catch (err) {
+    log.error("edit propagation threw", err);
+  }
+});
+
+//origin deleted -> delete relayed copies
+client.on(Events.MessageDelete, (data) => {
+  try {
+    propagateDelete(ctx, data.messageId);
+  } catch (err) {
+    log.error("delete propagation threw", err);
   }
 });
 

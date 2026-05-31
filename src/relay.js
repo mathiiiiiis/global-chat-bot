@@ -40,6 +40,70 @@ function isKnownBot(id) {
 //grouping state
 const lastAuthorByChannel = new Map();
 
+// ==== edit/delete tracking =====
+//
+//
+// tracks relayed copies for each source message so edits and deletes can be
+// mirrored. entries expire after a TTL since old messages rarely change and
+// the library only emits updates for cached messages
+// > shape: originMessageId -> { at, originServerName, copies [{ message, showHeader }] }
+const RELAY_TTL_MS = 60 * 60 * 1000;
+const MAX_TRACKED = 2000;
+const relayedByOrigin = new Map();
+
+function pruneTracked() {
+  const cutoff = Date.now() - RELAY_TTL_MS;
+  for (const [id, entry] of relayedByOrigin) {
+    if (entry.at < cutoff) relayedByOrigin.delete(id);
+  }
+  //hard cap as backstop
+  //first key == oldest tracked origin
+  while (relayedByOrigin.size > MAX_TRACKED) {
+    relayedByOrigin.delete(relayedByOrigin.keys().next().value);
+  }
+}
+
+function trackRelay(originId, originServerName, sentMessage, showHeader) {
+  let entry = relayedByOrigin.get(originId);
+  if (!entry) {
+    entry = { at: Date.now(), originServerName, copies: [] };
+    relayedByOrigin.set(originId, entry);
+  }
+  entry.copies.push({ message: sentMessage, showHeader });
+}
+
+//re-apply edits to all relayed copies, keeping their original header state
+function propagateEdit(ctx, message) {
+  const entry = relayedByOrigin.get(message.id);
+  if (!entry) return;
+  ctx.log.debug("propagate edit", { origin: message.id, copies: entry.copies.length });
+  for (const copy of entry.copies) {
+    const text = formatRelay(
+      message,
+      entry.originServerName,
+      ctx.client,
+      copy.showHeader,
+      ctx.config.cdnUrl,
+    );
+    ctx.queue
+      .enqueue(`edit->${copy.message.channelId}`, () => copy.message.edit(text))
+      .catch(() => {});
+  }
+}
+
+//delete all relayed copies of a deleted message, then forget
+function propagateDelete(ctx, originId) {
+  const entry = relayedByOrigin.get(originId);
+  if (!entry) return;
+  ctx.log.debug("propogate delete", { origin: originId, copies: entry.copies.length });
+  for (const copy of entry.copies) {
+    ctx.queue
+      .enqueue(`delete->${copy.message.channelId}`, () => copy.message.delete())
+      .catch(() => {});
+  }
+  relayedByOrigin.delete(originId);
+}
+
 //collapse whitespace clip long text down to a snippet for
 //quote/reply previews, so a relaywed quote does not drag a
 //whole paragraph
@@ -70,8 +134,8 @@ function sanitizeMentions(content, client, quoteMap) {
       const q = quoteMap && quoteMap.get(id);
       if (!q) return "";
       const who = q.createdBy && q.createdBy.username;
-      const snip = snippet(q.content, 80);
-      return who ? `quoted: \u201c${who}: ${snip}\u201d` : `\u201c${snip}\u201d`;
+      const snip = snippet(sanitizeMentions(q.content, client), 80);
+      return who ? `quoted ${who}: \u201c${snip}\u201d` : `quoted: \u201c${snip}\u201d`;
     })
     .replace(/@everyone/gi, "(at)everyone")
     .trim();
@@ -182,6 +246,8 @@ function broadcast(ctx, message) {
 
   const authorId = message.user ? message.user.id : "?";
 
+  pruneTracked(); //drop expired before adding new
+
   for (const target of targets) {
     const channel = client.channels.cache.get(target.channelId);
     if (!channel) {
@@ -203,6 +269,9 @@ function broadcast(ctx, message) {
     const label = `relay->${target.serverName || target.channelId}`;
     queue
       .enqueue(label, () => channel.send(text, { silent: true }))
+      .then((sent) => {
+        if (sent) trackRelay(message.id, originServerName, sent, showHeader);
+      })
       .catch((err) => {
         //already logged inside queue when it gave up
         //this catch just keeps rejection from becoming
@@ -221,4 +290,6 @@ module.exports = {
   buildReplyContext,
   noteCommandBots,
   isKnownBot,
+  propagateEdit,
+  propagateDelete,
 };
