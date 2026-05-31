@@ -178,6 +178,7 @@ function handleStatus(ctx, message) {
 //used by /links refrenced from /help
 const REPO_URL = "https://github.com/mathiiiiiis/global-chat-bot";
 const AUTHOR_URL = "https://mathiiis.de";
+const NERIMITY_SERVER_INVITE = "https://nerimity.com/i/fBctp";
 
 // ==== /help ====
 function handleHelp(ctx, message) {
@@ -194,8 +195,8 @@ function handleHelp(ctx, message) {
       `> /help - this message lol\n` +
       `\n` +
       `Run /setup in two or more channels across different servers and they are ` +
-      `connected. Messages, replies, quotes, and images all carry across. ` +
-      `Edits and deletion syncs are on the way!` +
+      `connected. Messages, replies, quotes, images, edits, and deletions all ` +
+      `carry across. ` +
       `\n` +
       `Setup and unlink are admin-only.`,
   );
@@ -206,7 +207,10 @@ function handleLinks(ctx, message) {
   reply(
     ctx,
     message,
-    `**Global Chat- links**\n` + `> Source code: <${REPO_URL}>\n` + `> Author: <${AUTHOR_URL}>`,
+    `**Global Chat - links**\n` +
+      `> Source code: <${REPO_URL}>\n` +
+      `> Author: <${AUTHOR_URL}>\n` +
+      `> Server Invite: <${NERIMITY_SERVER_INVITE}>`,
   );
 }
 
