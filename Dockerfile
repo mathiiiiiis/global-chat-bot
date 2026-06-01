@@ -7,6 +7,7 @@ COPY src ./src
 RUN mkdir -p /data && chown node:node /data
 ENV NODE_ENV=production
 ENV GC_DATA_FILE=/data/synced.json
+ENV GC_DB_FILE=/data/store.db
 USER node
 ENTRYPOINT ["dumb-init", "--"]
 CMD ["node", "src/index.js"]

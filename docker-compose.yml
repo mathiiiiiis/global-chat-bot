@@ -16,6 +16,7 @@ services:
       GC_LOG_LEVEL: ${GC_LOG_LEVEL:-info}
       GC_REGISTER_ON_START: ${GC_REGISTER_ON_START:-1}
       GC_DATA_FILE: /data/synced.json
+      GC_DB_FILE: /data/store.db
     volumes:
       - gc-data:/data
     logging:
