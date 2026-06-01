@@ -14,6 +14,8 @@
 //   message.replies, inline qoutes live on message.raw.quotedMessage. pill both
 //   back in as readable so a reply-only message is not relayed blank
 
+const { Message } = require("@nerimity/nerimity.js");
+
 //nerimity encodes these inline. same markup librarys own toString()
 //methods produce
 // > [@:id] user    [#:id] channel    [q:id] quoted message     [r:id] role
@@ -43,66 +45,75 @@ const lastAuthorByChannel = new Map();
 
 // ==== edit/delete tracking =====
 //
+// tracking now lives in store (sqlite), so edits and deleted survive
+// restart. no message content is kept, only teh copy ids plus header bits
+// (author name, origin server). See store.js
 //
-// tracks relayed copies for each source message so edits and deletes can be
-// mirrored. entries expire after a TTL since old messages rarely change and
-// the library only emits updates for cached messages
-// > shape: originMessageId -> { at, originServerName, copies [{ message, showHeader }] }
+// > TTL: rows older than this are pruned. editing an hours-old message is rare
 const RELAY_TTL_MS = 60 * 60 * 1000;
-const MAX_TRACKED = 2000;
-const relayedByOrigin = new Map();
 
-function pruneTracked() {
-  const cutoff = Date.now() - RELAY_TTL_MS;
-  for (const [id, entry] of relayedByOrigin) {
-    if (entry.at < cutoff) relayedByOrigin.delete(id);
-  }
-  //hard cap as backstop
-  //first key == oldest tracked origin
-  while (relayedByOrigin.size > MAX_TRACKED) {
-    relayedByOrigin.delete(relayedByOrigin.keys().next().value);
-  }
-}
-
-function trackRelay(originId, originServerName, sentMessage, showHeader) {
-  let entry = relayedByOrigin.get(originId);
-  if (!entry) {
-    entry = { at: Date.now(), originServerName, copies: [] };
-    relayedByOrigin.set(originId, entry);
-  }
-  entry.copies.push({ message: sentMessage, showHeader });
+function copyHandle(client, channelId, messageId) {
+  const botId = client.user ? client.user.id : "";
+  const raw = client.user && client.user.raw ? client.user.raw : { id: botId, username: "bot" };
+  return new Message(client, {
+    id: messageId,
+    channelId,
+    content: "",
+    type: 0,
+    createdAt: Date.now(),
+    createdBy: raw,
+  });
 }
 
 //re-apply edits to all relayed copies, keeping their original header state
 function propagateEdit(ctx, message) {
-  const entry = relayedByOrigin.get(message.id);
-  if (!entry) return;
-  ctx.log.debug("propagate edit", { origin: message.id, copies: entry.copies.length });
-  for (const copy of entry.copies) {
+  const copies = ctx.store.copiesFor(message.id);
+  if (!copies.length) return;
+  ctx.log.debug("propagate edit", { origin: message.id, copies: copies.length });
+  for (const copy of copies) {
     const text = formatRelay(
       message,
-      entry.originServerName,
+      copy.serverName,
       ctx.client,
-      copy.showHeader,
+      Boolean(copy.showHeader),
       ctx.config.cdnUrl,
     );
-    ctx.queue
-      .enqueue(`edit->${copy.message.channelId}`, () => copy.message.edit(text))
-      .catch(() => {});
+    const handle = copyHandle(ctx.client, copy.destChannel, copy.destId);
+    ctx.queue.enqueue(`edit->${copy.destChannel}`, () => handle.edit(text)).catch(() => {});
+  }
+}
+
+function propagateEditRaw(ctx, payload) {
+  const originId = payload && payload.messageId;
+  const updated = (payload && payload.updated) || {};
+  if (!originId || typeof updated.content !== "string") return;
+  const copies = ctx.store.copiesFor(originId);
+  if (!copies.length) return;
+  ctx.log.debug("propagating edit (raw)", { origin: originId, copies: copies.length });
+  const body = sanitizeMentions(updated.content, ctx.client);
+  for (const copy of copies) {
+    const header = copy.showHeader
+      ? `**${copy.authorName || "unknown"}** • ${colorize(copy.serverName || "a server", copy.serverId)}\n`
+      : "";
+    const text = `${header}${body || "_(no text content)_"}`;
+    const handle = copyHandle(ctx.client, copy.destChannel, copy.destId);
+    ctx.queue.enqueue(`edit->${copy.destChannel}`, () => handle.edit(text)).catch(() => {});
   }
 }
 
 //delete all relayed copies of a deleted message, then forget
 function propagateDelete(ctx, originId) {
-  const entry = relayedByOrigin.get(originId);
-  if (!entry) return;
-  ctx.log.debug("propogate delete", { origin: originId, copies: entry.copies.length });
-  for (const copy of entry.copies) {
+  const copies = ctx.store.copiesFor(originId);
+  if (!copies.length) return;
+  ctx.log.debug("propogating delete", { origin: originId, copies: copies.length });
+  for (const copy of copies) {
+    const channel = ctx.client.channels.cache.get(copy.destChannel);
+    if (!channel) continue;
     ctx.queue
-      .enqueue(`delete->${copy.message.channelId}`, () => copy.message.delete())
+      .enqueue(`delete->${copy.destChannel}`, () => channel.deleteMessage(copy.destId))
       .catch(() => {});
   }
-  relayedByOrigin.delete(originId);
+  ctx.store.forgetOrigin(originId);
 }
 
 //collapse whitespace clip long text down to a snippet for
@@ -290,7 +301,7 @@ function broadcast(ctx, message) {
     (message.channel && message.channel.server && message.channel.server.id) || "?";
   const groupKey = `${authorId}@${originServerId}`;
 
-  pruneTracked(); //drop expired before adding new
+  store.pruneRelays(RELAY_TTL_MS); //drop expired before adding new
 
   for (const target of targets) {
     const channel = client.channels.cache.get(target.channelId);
@@ -313,10 +324,21 @@ function broadcast(ctx, message) {
 
     const text = formatRelay(message, originServerName, client, showHeader, config.cdnUrl);
     const label = `relay->${target.serverName || target.channelId}`;
+    const destChannelId = target.channelId;
     queue
       .enqueue(label, () => channel.send(text, { silent: true }))
       .then((sent) => {
-        if (sent) trackRelay(message.id, originServerName, sent, showHeader);
+        if (sent) {
+          store.trackRelay({
+            originId: message.id,
+            authorName: message.user ? message.user.username : "unknown",
+            serverId: originServerId,
+            serverName: originServerName,
+            destChannel: destChannelId,
+            destId: sent.id,
+            showHeader,
+          });
+        }
       })
       .catch((err) => {
         //already logged inside queue when it gave up
@@ -337,5 +359,6 @@ module.exports = {
   noteCommandBots,
   isKnownBot,
   propagateEdit,
+  propagateEditRaw,
   propagateDelete,
 };

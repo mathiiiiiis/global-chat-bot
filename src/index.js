@@ -19,6 +19,7 @@ const {
   noteCommandBots,
   isKnownBot,
   propagateEdit,
+  propagateEditRaw,
   propagateDelete,
 } = require("./relay.js");
 const { handleCommand, COMMAND_DEFS } = require("./commands.js");
@@ -39,7 +40,7 @@ const client = new Client({
   wsUrlOverride: config.wsUrl,
 });
 
-const store = new Store(config.dataFile, log.child("store")).load();
+const store = new Store(config.dbFile, log.child("store"), config.dataFile).load();
 
 const queue = new RateQueue({
   logger: log.child("queue"),
@@ -117,6 +118,18 @@ client.on(Events.MessageUpdate, (message) => {
   }
 });
 
+//raw socket fallback for edits by library, primarily for
+//pre-restart relays. cached messages are skipped to avoid duplicate edits
+client.socket.on("message:updated", (payload) => {
+  try {
+    if (!payload || !payload.messageId) return;
+    if (client.messages.cache.has(payload.messageId)) return;
+    propagateEditRaw(ctx, payload);
+  } catch (err) {
+    log.error("raw edit propagation threw", err);
+  }
+});
+
 //origin deleted -> delete relayed copies
 client.on(Events.MessageDelete, (data) => {
   try {
@@ -165,6 +178,7 @@ function shutdown(signal) {
   shuttingDown = true;
   log.info(`got ${signal}, flushing store and exiting`);
   store.saveNow();
+  store.close();
   process.exit(0);
 }
 process.on("SIGINT", () => shutdown("SIGINT"));

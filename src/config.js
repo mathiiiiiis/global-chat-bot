@@ -42,6 +42,8 @@ const config = {
   //persistence
   dataFile: process.env.GC_DATA_FILE || path.join(__dirname, "data", "synced.json"),
 
+  dbFile: process.env.GC_DB_FILE || path.join(__dirname, "data", "store.db"),
+
   //permissions
   //by default only server admins (or owner)
   //flip for casual/private instances

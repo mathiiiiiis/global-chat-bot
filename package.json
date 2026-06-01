@@ -1,6 +1,6 @@
 {
   "name": "global-chat-but-better",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Open-source Global Chat bot for Nerimity",
   "keywords": [
     "bot",
@@ -13,14 +13,14 @@
   "type": "commonjs",
   "main": "src/index.js",
   "scripts": {
-    "start": "node src/index.js",
-    "debug": "node src/index.js --debug",
+    "start": "node --disable-warning=ExperimentalWarning src/index.js",
+    "debug": "node --disable-warning=ExperimentalWarning src/index.js --debug",
     "register": "node src/registerCommands.js"
   },
   "dependencies": {
     "@nerimity/nerimity.js": "^1.20.1"
   },
   "engines": {
-    "node": ">=20.12"
+    "node": ">=22.5"
   }
 }
