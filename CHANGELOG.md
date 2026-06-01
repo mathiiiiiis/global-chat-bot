@@ -9,6 +9,12 @@ versions.
 
 ## [Unreleased]
 
+### Changed
+
+- Relay tracking now uses a SQLite database, allowing message edits and
+  deletions to continue working after bot restarts without storing message
+  content.
+
 ### Added
 
 - Server names now get assigned a deterministic color based on the server ID,
