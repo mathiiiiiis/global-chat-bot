@@ -49,6 +49,10 @@ class Store {
       );
       CREATE INDEX IF NOT EXISTS idx_relays_origin ON relays (origin_id);
       CREATE INDEX IF NOT EXISTS idx_relays_at ON relays (at);
+      CREATE TABLE IF NOT EXISTS counters (
+        name  TEXT PRIMARY KEY,
+        value INTEGER NOT NULL DEFAULT 0
+      ); 
     `);
 
     this._migrateFromJson();
@@ -193,6 +197,25 @@ class Store {
 
   forgetOrigin(originId) {
     this.db.prepare("DELETE FROM relays WHERE origin_id = ?").run(originId);
+  }
+
+  // ==== counters: persistent, all-time stats ====
+  //
+  // monotonic counters that survive retsrats and are not affected by relay-row
+  // pruning
+  // used for lifetime totals in /status
+  bumpCounter(name, by) {
+    this.db
+      .prepare(
+        `INSERT INTO counters (name, value) VALUES (?, ?)
+         ON CONFLICT(name) DO UPDATE SET value = value + excluded.value`,
+      )
+      .run(name, by || 1);
+  }
+
+  getCounter(name) {
+    const row = this.db.prepare("SELECT value FROM counters WHERE name = ?").get(name);
+    return row ? row.value : 0;
   }
 
   //drop tracking rows older than TTL. returns how many sent

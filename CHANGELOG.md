@@ -14,6 +14,7 @@ versions.
 - Relay tracking now uses a SQLite database, allowing message edits and
   deletions to continue working after bot restarts without storing message
   content.
+- Persist all-time relayed count
 
 ### Added
 

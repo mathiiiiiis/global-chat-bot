@@ -161,6 +161,7 @@ function handleUnlink(ctx, message) {
 function handleStatus(ctx, message) {
   const linked = ctx.store.hasChannel(message.channelId);
   const total = ctx.store.listChannels().length;
+  const allTime = ctx.store.getCounter("relayed");
   const q = ctx.queue.stats;
 
   reply(
@@ -169,7 +170,8 @@ function handleStatus(ctx, message) {
     `Global Chat status:\n` +
       `> this channel: ${linked ? "linked" : "not linked"}\n` +
       `> channels in network: ${total}\n` +
-      `> queue: ${ctx.queue.size} waiting, ${q.done} sent, ${q.retried} retried, ${q.failed} failed`,
+      `> relayed: ${allTime} all-time (${q.done} this session)\n` +
+      `> queue: ${ctx.queue.size} waiting, ${q.retried} retried, ${q.failed} failed`,
   );
 }
 

@@ -340,13 +340,14 @@ function broadcast(ctx, message) {
             destId: sent.id,
             showHeader,
           });
+          store.bumpCounter("relayed");
         }
       })
-      .catch((err) => {
+      .catch(() => {
         //already logged inside queue when it gave up
         //this catch just keeps rejection from becoming
         //an unhandled promise
-        log.debug(`relay task failed for ${label}`, err);
+        log.debug(`relay task failed for ${label}`);
       });
   }
 
