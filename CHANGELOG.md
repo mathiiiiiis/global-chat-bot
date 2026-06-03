@@ -9,6 +9,10 @@ versions.
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [0.2.0] - 2026-06-03
+
 ### Changed
 
 - Relay tracking now uses a SQLite database, allowing message edits and
