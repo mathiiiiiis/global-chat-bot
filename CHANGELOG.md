@@ -170,6 +170,7 @@ Project
   the environment, so `npm run debug` stayed at the configured level. Explicit
   command-line flags now take precedence over the env var.
 
-[Unreleased]: https://github.com/mathiiiiiis/global-chat-bot/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/mathiiiiiis/global-chat-bot/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/mathiiiiiis/global-chat-bot/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/mathiiiiiis/global-chat-bot/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/mathiiiiiis/global-chat-bot/releases/tag/v0.1.0
