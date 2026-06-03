@@ -26,6 +26,8 @@ versions.
   from the same user but a different server still shows its header (and the
   source server name) instead of being silently grouped with the previous one.
 - Docker not creating db
+- use gradient entity for sever-name color, as the normal color one could
+  sometimes end in a trailing [#reset]
 
 ## [0.1.1] - 2026-05-31
 

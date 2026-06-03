@@ -217,7 +217,9 @@ function serverColor(serverId) {
 //wrap text in neris color markup. return text unchanged if no id
 function colorize(text, serverId) {
   if (!serverId || serverId === "?") return text;
-  return `[${serverColor(serverId)}]${text}[#reset]`;
+  const c = serverColor(serverId);
+  const safe = String(text).replace(/[[\]]/g, "");
+  return `[gradient: ${c}-${c} ${safe}]`;
 }
 
 //build text that gets send into other channels
