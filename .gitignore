@@ -25,6 +25,8 @@ npm-debug.log*
 # Database
 *.db
 *.sqlite
+*.db-shm
+*.db-wal
 
 # Misc
 .cache/
