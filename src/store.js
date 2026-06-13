@@ -175,7 +175,7 @@ class Store {
         copy.originId,
         copy.authorName || null,
         copy.serverId || null,
-        copy.serverNamer || null,
+        copy.serverName || null,
         copy.destChannel,
         copy.destId,
         copy.showHeader ? 1 : 0,
