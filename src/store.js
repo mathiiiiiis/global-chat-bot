@@ -270,6 +270,18 @@ class Store {
     return row && row.emoji ? row.emoji : null;
   }
 
+  //number of linked channels per server
+  //used to detect join (0 > 1) and leave (1 > 0)
+  serverChannelCount(serverId) {
+    return this.db.prepare("SELECT COUNT(*) AS n FROM channels WHERE server_id = ?").get(serverId)
+      .n;
+  }
+
+  //distinct servers represented in network
+  countServers() {
+    return this.db.prepare("SELECT COUNT(DISTINCT server_id) AS n FROM channels").get().n;
+  }
+
   // ==== counters: persistent, all-time stats ====
   //
   // monotonic counters that survive retsrats and are not affected by relay-row

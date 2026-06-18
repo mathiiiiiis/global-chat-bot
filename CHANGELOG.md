@@ -16,6 +16,9 @@ versions.
   a text reply header. Targets too old to still be tracked are left unlinked.
 - `/setemoji <emoji|clear>` lets server admins set a header emoji that prefixes
   messages relayed from their server. Accepts a custom emoji or a unicode one.
+- Join/leave announcements: when a server links its first channel or unlinks its
+  last (or the bot is removed), a short notice is posted to every other linked
+  channel. Toggle with `GC_ANNOUNCE=0`.
 
 ### Fixed
 

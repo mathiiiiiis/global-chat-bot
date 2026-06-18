@@ -22,6 +22,7 @@ const {
   propagateEditRaw,
   propagateDelete,
   clearGrouping,
+  announceNetwork,
 } = require("./relay.js");
 const { handleCommand, COMMAND_DEFS } = require("./commands.js");
 const { refreshPresence } = require("./presence.js");
@@ -156,16 +157,27 @@ client.on(Events.ServerLeft, (server) => {
   if (removed) {
     log.info(`left "${server.name}", unlinked ${removed} channel(s)`);
     ctx.refreshPresence();
+    announceNetwork(ctx, "leave", server.name, null);
   }
 });
 
 client.on(Events.ServerChannelDeleted, (data) => {
   if (store.hasChannel(data.channelId)) {
+    //save server identity before removal
+    const ch = client.channels.cache.get(data.channelId);
+    const server = ch && ch.server;
+    const serverId = server && server.id;
+    const serverName = (server && server.name) || "a server";
+
     store.removeChannel(data.channelId);
     log.info("a linked channel was deleted, unlinked it", {
       channel: data.channelId,
     });
     ctx.refreshPresence();
+
+    if (serverId && store.serverChannelCount(serverId) === 0) {
+      announceNetwork(ctx, "leave", serverName, null);
+    }
   }
 });
 

@@ -12,7 +12,8 @@
 // > GC_MAX_BACKOFF   – backoff ceiling
 // > GC_QUEUE_MAX     – max queued tasks before shedding
 // > GC_DATA_FILE     – where synced channels get persisted
-// > GC_ALLOW_ANYONE  – "1" lets any member urn /setup (default: admins only)
+// > GC_ALLOW_ANYONE  – "1" lets any member run /setup (default: admins only)
+// > GC_ANNOUNCE      – "0" silences server join/leave announcements (default: on)
 // > GC_LOG_LEVEL     - error|warn|info|debug|trace (or --debug/--trace)
 // > GC_API_URL       – override api base (self-hosted/localhost testing)
 // > GC_WS_URL        – override websocket base (same)
@@ -21,7 +22,7 @@ const path = require("path");
 
 try {
   process.loadEnvFile(path.join(__dirname, "..", ".env"));
-} catch {}
+} catch { }
 
 function num(value, fallback) {
   const parsed = Number(value);
@@ -54,6 +55,10 @@ const config = {
 
   //relay messages from other bots
   relayBots: process.env.GC_RELAY_BOTS === "1",
+
+  //system announce join/leave to all channels
+  //enabled by default
+  announce: process.env.GC_ANNOUNCE !== "0",
 
   ignoredUsers: new Set(
     (process.env.GC_IGNORE_USERS || "")

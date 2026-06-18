@@ -418,6 +418,46 @@ function broadcast(ctx, message) {
   return targets.length;
 }
 
+// ==== network announcements ====
+//
+// broadcast system line on server join/leave via rate queue
+// not tracked or counted a relayed messages
+//
+// > kind: "join" | "leave"
+// > excludeChannelId: channel to skip (e.g. joiner)
+function announceServers(n) {
+  return `${n} server${n === 1 ? "" : "s"}`;
+}
+function announceChannels(n) {
+  return `${n} channel${n === 1 ? "" : "s"}`;
+}
+
+function announceNetwork(ctx, kind, serverName, excludeChannelId) {
+  const { client, queue, store, log, config } = ctx;
+  if (!config.announce) return;
+
+  const channels = store.listChannels();
+  const servers = store.countServers();
+  const icon = kind === "join" ? "\u{1F310}" : "\u{1F44B}"; //globe / waving hand
+  const verb = kind === "join" ? "joined" : "left";
+  const line =
+    `${icon} **${serverName || "a server"}** ${verb} Global Chat ` +
+    `(now ${announceServers(servers)}, ${announceChannels(channels.length)})`;
+
+  let sent = 0;
+  for (const entry of channels) {
+    if (excludeChannelId && entry.channelId === excludeChannelId) continue;
+    const channel = client.channels.cache.get(entry.channelId);
+    if (!channel) continue;
+    sent++;
+    queue
+      .enqueue(`announce->${entry.channelId}`, () => channel.send(line, { silent: true }))
+      .catch(() => { });
+  }
+  if (sent) log.info(`announced server ${verb}`, { server: serverName, channels: sent });
+}
+
+
 module.exports = {
   broadcast,
   sanitizeMentions,
@@ -425,6 +465,7 @@ module.exports = {
   buildReplyContext,
   resolveReplyTarget,
   clearGrouping,
+  announceNetwork,
   noteCommandBots,
   isKnownBot,
   propagateEdit,

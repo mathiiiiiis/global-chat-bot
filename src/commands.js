@@ -13,6 +13,7 @@
 // > channel picker   -> ["[#:123]"]
 
 const { RolePermissions } = require("@nerimity/nerimity.js");
+const { announceNetwork } = require("./relay.js");
 
 //channel-picker markup eg [#:1234...]
 const RE_CHANNEL_MENTION = /^\[#:(\d+)\]$/;
@@ -127,6 +128,8 @@ function handleSetup(ctx, message) {
   }
 
   const server = target.channel.server;
+  //first server channel? (decide before adding)
+  const isNewServer = ctx.store.serverChannelCount(server.id) === 0;
   ctx.store.addChannel({
     channelId: target.channelId,
     serverId: server.id,
@@ -141,6 +144,7 @@ function handleSetup(ctx, message) {
     total,
   });
   if (ctx.refreshPresence) ctx.refreshPresence();
+  if (isNewServer) announceNetwork(ctx, "join", server.name, target.channelId);
   reply(
     ctx,
     message,
@@ -170,6 +174,12 @@ function handleUnlink(ctx, message) {
 
   ctx.log.info("channel unlinked", { channel: target.channelId });
   if (ctx.refreshPresence) ctx.refreshPresence();
+
+  //server leaves network when its last channel is removed
+  const server = target.channel.server;
+  if (server && ctx.store.serverChannelCount(server.id) === 0) {
+    announceNetwork(ctx, "leave", server.name, null);
+  }
   reply(ctx, message, "Unlinked this channel from Global Chat.");
 }
 
