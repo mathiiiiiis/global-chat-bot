@@ -55,6 +55,11 @@ class Store {
         name  TEXT PRIMARY KEY,
         value INTEGER NOT NULL DEFAULT 0
       );
+      CREATE TABLE IF NOT EXISTS server_settings (
+        server_id  TEXT PRIMARY KEY,
+        emoji      TEXT,
+        updated_at INTEGER
+      );
     `);
 
     this._migrateSchema();
@@ -235,6 +240,34 @@ class Store {
         "SELECT origin_id AS originId, origin_channel AS originChannel FROM relays WHERE dest_id = ? LIMIT 1",
       )
       .get(destId);
+  }
+
+  // ==== server settings ====
+  //
+  // per-server header customization
+
+  //set or clear a servers header emoji
+  setServerEmoji(serverId, emoji) {
+    if (emoji == null) {
+      this.db.prepare("DELETE FROM server_settings WHERE server_id = ?").run(serverId);
+      this.log.debug(`store clear emoji ${serverId}`);
+      return;
+    }
+    this.db
+      .prepare(
+        `INSERT INTO server_settings (server_id, emoji, updated_at) VALUES (?, ?, ?)
+         ON CONFLICT(server_id) DO UPDATE SET emoji = excluded.emoji, updated_at = excluded.updated_at`,
+      )
+      .run(serverId, emoji, Date.now());
+    this.log.debug(`store set emoji ${serverId}`, { emoji });
+  }
+
+  getServerEmoji(serverId) {
+    if (!serverId) return null;
+    const row = this.db
+      .prepare("SELECT emoji FROM server_settings WHERE server_id = ?")
+      .get(serverId);
+    return row && row.emoji ? row.emoji : null;
   }
 
   // ==== counters: persistent, all-time stats ====

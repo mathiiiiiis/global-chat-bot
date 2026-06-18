@@ -17,6 +17,22 @@ const { RolePermissions } = require("@nerimity/nerimity.js");
 //channel-picker markup eg [#:1234...]
 const RE_CHANNEL_MENTION = /^\[#:(\d+)\]$/;
 
+//nerimity custom emojis [ce:id:name] (anim: [ace:id:name])
+//kept verbatim for consistent rendering
+const RE_CUSTOM_EMOJI = /\[a?ce:[^\]]+\]/;
+
+//extracts single emoji from /setemoji args
+//accepts custom or unincode, rejects text
+function extractEmoji(arg) {
+  const custom = arg.match(RE_CUSTOM_EMOJI);
+  if (custom) return custom[0];
+  const trimmed = arg.trim();
+  if (!trimmed || /\s/.test(trimmed) || trimmed.length > 16) return null;
+  //require at least one non-ascii codepoint
+  if (!/[^\x00-\x7F]/.test(trimmed)) return null;
+  return trimmed;
+}
+
 //replay helper
 //
 //route replies through queue too, so even own confirmations respect
@@ -24,7 +40,7 @@ const RE_CHANNEL_MENTION = /^\[#:(\d+)\]$/;
 function reply(ctx, message, text) {
   ctx.queue
     .enqueue(`reply:${message.command ? message.command.name : "?"}`, () => message.reply(text))
-    .catch(() => {});
+    .catch(() => { });
 }
 
 //permissions check
@@ -129,14 +145,14 @@ function handleSetup(ctx, message) {
     ctx,
     message,
     `Linked ${target.channel.toString()} into Global Chat :D\n` +
-      `The network now spans ${total} channel(s). Say hello!`,
+    `The network now spans ${total} channel(s). Say hello!`,
   );
 }
 
 // ==== /unlink ====
 function handleUnlink(ctx, message) {
   if (!canManage(ctx, message)) {
-    reply(ctx, message, "You need to be a server to change Global Chat.");
+    reply(ctx, message, "You need to be a server admin to change Global Chat.");
     return;
   }
 
@@ -157,6 +173,48 @@ function handleUnlink(ctx, message) {
   reply(ctx, message, "Unlinked this channel from Global Chat.");
 }
 
+// ==== /setemoji ====
+function handleSetemoji(ctx, message) {
+  if (!canManage(ctx, message)) {
+    reply(ctx, message, "Ask the server admin to set this up.");
+    return;
+  }
+
+  const server = message.channel && message.channel.server;
+  if (!server) {
+    reply(ctx, message, "This only works in a server, dummy.");
+    return;
+  }
+
+  const arg = (message.command.args || []).join(" ").trim();
+
+  if (!arg || /^(clear|none|off|remove)$/i.test(arg)) {
+    ctx.store.setServerEmoji(server.id, null);
+    ctx.log.info("server emoji cleared", { server: server.name });
+    reply(ctx, message, "Cleared this server's emoji");
+    return;
+  }
+
+  const emoji = extractEmoji(arg);
+  if (!emoji) {
+    reply(
+      ctx,
+      message,
+      "Please give me a single emoji, like `/setemoji \u{1F431}` or a custom server emoji. " +
+      "Use `/setemoji clear` to remove it.",
+    );
+    return;
+  }
+
+  ctx.store.setServerEmoji(server.id, emoji);
+  ctx.log.info("server emoji set", { server: server.name, emoji });
+  reply(
+    ctx,
+    message,
+    `Header emoji set to ${emoji} for this server. It will show on all messages relayed from here.`,
+  );
+}
+
 // ==== /status ====
 function handleStatus(ctx, message) {
   const linked = ctx.store.hasChannel(message.channelId);
@@ -168,10 +226,10 @@ function handleStatus(ctx, message) {
     ctx,
     message,
     `Global Chat status:\n` +
-      `> this channel: ${linked ? "linked" : "not linked"}\n` +
-      `> channels in network: ${total}\n` +
-      `> relayed: ${allTime} all-time (${q.done} this session)\n` +
-      `> queue: ${ctx.queue.size} waiting, ${q.retried} retried, ${q.failed} failed`,
+    `> this channel: ${linked ? "linked" : "not linked"}\n` +
+    `> channels in network: ${total}\n` +
+    `> relayed: ${allTime} all-time (${q.done} this session)\n` +
+    `> queue: ${ctx.queue.size} waiting, ${q.retried} retried, ${q.failed} failed`,
   );
 }
 
@@ -188,19 +246,20 @@ function handleHelp(ctx, message) {
     ctx,
     message,
     `**Global chat** links channels across servers into one shared conversation.\n` +
-      `\n` +
-      `Commands:\n` +
-      `> /setup <here|#channel> - link a channel into the network\n` +
-      `> /unlink <here|#channel> - remove a channel from the network\n` +
+    `\n` +
+    `Commands:\n` +
+    `> /setup <here|#channel> - link a channel into the network\n` +
+    `> /unlink <here|#channel> - remove a channel from the network\n` +
+    `> /setemoji <emoji|clear> – set this server's emoji (admin)`
       `> /status - show network and queue status\n` +
-      `> /links - source code and author links\n` +
-      `> /help - this message lol\n` +
-      `\n` +
-      `Run /setup in two or more channels across different servers and they are ` +
-      `connected. Messages, replies, quotes, images, edits, and deletions all ` +
-      `carry across. ` +
-      `\n` +
-      `Setup and unlink are admin-only.`,
+    `> /links - source code and author links\n` +
+    `> /help - this message lol\n` +
+    `\n` +
+    `Run /setup in two or more channels across different servers and they are ` +
+    `connected. Messages, replies, quotes, images, edits, and deletions all ` +
+    `carry across. ` +
+    `\n` +
+    `Setup and unlink are admin-only.`,
   );
 }
 
@@ -210,9 +269,9 @@ function handleLinks(ctx, message) {
     ctx,
     message,
     `**Global Chat - links**\n` +
-      `> Source code: <${REPO_URL}>\n` +
-      `> Author: <${AUTHOR_URL}>\n` +
-      `> Server Invite: <${NERIMITY_SERVER_INVITE}>`,
+    `> Source code: <${REPO_URL}>\n` +
+    `> Author: <${AUTHOR_URL}>\n` +
+    `> Server Invite: <${NERIMITY_SERVER_INVITE}>`,
   );
 }
 
@@ -229,6 +288,8 @@ function handleCommand(ctx, message) {
       return handleSetup(ctx, message);
     case "unlink":
       return handleUnlink(ctx, message);
+    case "setemoji":
+      return handleSetemoji(ctx, message);
     case "status":
       return handleStatus(ctx, message);
     case "help":
@@ -252,6 +313,11 @@ const COMMAND_DEFS = [
     name: "unlink",
     description: "Remove a channel from the Global Chat network.",
     args: "<here|#channel>",
+  },
+  {
+    name: "setemoji",
+    description: "Set or clear this server's emoji.",
+    args: "<emoji|clear>",
   },
   {
     name: "status",

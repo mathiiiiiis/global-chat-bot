@@ -72,12 +72,14 @@ function propagateEdit(ctx, message) {
   if (!copies.length) return;
   ctx.log.debug("propagate edit", { origin: message.id, copies: copies.length });
   for (const copy of copies) {
+    const emoji = ctx.store.getServerEmoji(copy.serverId);
     const text = formatRelay(
       message,
       copy.serverName,
       ctx.client,
       Boolean(copy.showHeader),
       ctx.config.cdnUrl,
+      emoji,
     );
     const handle = copyHandle(ctx.client, copy.destChannel, copy.destId);
     ctx.queue.enqueue(`edit->${copy.destChannel}`, () => handle.edit(text)).catch(() => { });
@@ -93,8 +95,10 @@ function propagateEditRaw(ctx, payload) {
   ctx.log.debug("propagating edit (raw)", { origin: originId, copies: copies.length });
   const body = sanitizeMentions(updated.content, ctx.client);
   for (const copy of copies) {
+    const emoji = copy.serverId ? ctx.store.getServerEmoji(copy.serverId) : null;
+    const emojiPrefix = emoji ? `${emoji}` : "";
     const header = copy.showHeader
-      ? `**${copy.authorName || "unknown"}** • ${colorize(copy.serverName || "a server", copy.serverId)}\n`
+      ? `${emojiPrefix}**${copy.authorName || "unknown"}** • ${colorize(copy.serverName || "a server", copy.serverId)}\n`
       : "";
     const text = `${header}${body || "_(no text content)_"}`;
     const handle = copyHandle(ctx.client, copy.destChannel, copy.destId);
@@ -225,11 +229,11 @@ function colorize(text, serverId) {
 
 //build text that gets send into other channels
 //format is interntionally plain and easy to tweak
-// > with header: **username** • ServerName
+// > with header: {emoji} **username** • ServerName
 // >              message body
 // >              attachment url(s), each on its own line so they embed
 // > grouped:     header dropped, rest unchanged
-function formatRelay(message, originServerName, client, showHeader, cdnUrl) {
+function formatRelay(message, originServerName, client, showHeader, cdnUrl, headerEmoji) {
   const username = message.user ? message.user.username : "unknown";
 
   const quoteMap = new Map();
@@ -244,7 +248,8 @@ function formatRelay(message, originServerName, client, showHeader, cdnUrl) {
   const originServerId =
     (message.channel && message.channel.server && message.channel.server.id) || "?";
   const serverLabel = colorize(originServerName, originServerId);
-  const header = showHeader ? `**${username}** • ${serverLabel}\n` : "";
+  const emojiPrefix = headerEmoji ? `${headerEmoji} ` : "";
+  const header = showHeader ? `${emojiPrefix}**${username}** • ${serverLabel}\n` : "";
 
   const parts = [];
   if (body) parts.push(body);
@@ -334,6 +339,9 @@ function broadcast(ctx, message) {
   const repliedIds = message.replies ? [...message.replies.keys()] : [];
   const originChannelId = message.channelId;
 
+  //header emoji is ORIGIN servers emoji
+  const headerEmoji = store.getServerEmoji(originServerId);
+
   store.pruneRelays(RELAY_TTL_MS); //drop expired before adding new
 
   for (const target of targets) {
@@ -355,7 +363,14 @@ function broadcast(ctx, message) {
     const showHeader = !last || last.key !== groupKey || now - last.at > GROUP_WINDOW_MS;
     lastAuthorByChannel.set(target.channelId, { key: groupKey, at: now });
 
-    const text = formatRelay(message, originServerName, client, showHeader, config.cdnUrl);
+    const text = formatRelay(
+      message,
+      originServerName,
+      client,
+      showHeader,
+      config.cdnUrl,
+      headerEmoji,
+    );
     const label = `relay->${target.serverName || target.channelId}`;
     const destChannelId = target.channelId;
     queue
