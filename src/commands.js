@@ -256,9 +256,10 @@ function handleHelp(ctx, message) {
     `Commands:\n` +
     `> /setup <here|#channel> - link a channel into the network\n` +
     `> /unlink <here|#channel> - remove a channel from the network\n` +
-    `> /setemoji <emoji|clear> – set this server's emoji (admin)`
-      `> /status - show network and queue status\n` +
+    `> /setemoji <emoji|clear> – set this server's emoji (admin)\n` +
+    `> /status - show network and queue status\n` +
     `> /links - source code and author links\n` +
+    `> /rules – network rules\n` +
     `> /help - this message lol\n` +
     `\n` +
     `Run /setup in two or more channels across different servers and they are ` +
@@ -278,6 +279,24 @@ function handleLinks(ctx, message) {
     `> Source code: <${REPO_URL}>\n` +
     `> Author: <${AUTHOR_URL}>\n` +
     `> Server Invite: <${NERIMITY_SERVER_INVITE}>`,
+  );
+}
+
+// ==== /rules ====
+function handleRules(ctx, message) {
+  reply(
+    ctx,
+    message,
+    `**Global Chat - rules**\n` +
+    `1. No advertising (server invites allowed). Global Chat is for talking, not promo.\n` +
+    `2. English only, so everyone can follow along.\n` +
+    `3. Be respectful. No harassment, hate speech, slurs, or doxxing.\n` +
+    `4. No NSFW, gore, or disturbing content, in images or text.\n` +
+    `5. No spam, flooding, or mass pings.\n` +
+    `\n` +
+    `Most of these come from Nerimity's Official Terms of Service ` +
+    `(<https://nerimity.com/terms-and-conditions>), which all members must ` +
+    `follow. Breaking these WILL get your server banned from using Global Chat.`,
   );
 }
 
@@ -302,6 +321,8 @@ function handleCommand(ctx, message) {
       return handleHelp(ctx, message);
     case "links":
       return handleLinks(ctx, message);
+    case "rules":
+      return handleRules(ctx, message);
     default:
       ctx.log.trace(`ignoring unknown command "${name}`);
   }
@@ -338,6 +359,11 @@ const COMMAND_DEFS = [
   {
     name: "links",
     description: "Get the source code and author links.",
+    args: "",
+  },
+  {
+    name: "rules",
+    description: "Show the rules of Global Chat.",
     args: "",
   },
 ];
