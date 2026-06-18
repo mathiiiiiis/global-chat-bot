@@ -102,9 +102,9 @@ function propagateEditRaw(ctx, payload) {
   const body = sanitizeMentions(updated.content, ctx.client);
   for (const copy of copies) {
     const emoji = copy.serverId ? ctx.store.getServerEmoji(copy.serverId) : null;
-    const emojiPrefix = emoji ? `${emoji}` : "";
+    const emojiPrefix = emoji ? ` • ${emoji}` : "";
     const header = copy.showHeader
-      ? `${emojiPrefix}**${copy.authorName || "unknown"}** • ${colorize(copy.serverName || "a server", copy.serverId)}\n`
+      ? `**${copy.authorName || "unknown"}** • ${colorize(copy.serverName || "a server", copy.serverId)}${emojiPrefix}\n`
       : "";
     const text = `${header}${body || "_(no text content)_"}`;
     const handle = copyHandle(ctx.client, copy.destChannel, copy.destId);
@@ -254,8 +254,8 @@ function formatRelay(message, originServerName, client, showHeader, cdnUrl, head
   const originServerId =
     (message.channel && message.channel.server && message.channel.server.id) || "?";
   const serverLabel = colorize(originServerName, originServerId);
-  const emojiPrefix = headerEmoji ? `${headerEmoji} ` : "";
-  const header = showHeader ? `${emojiPrefix}**${username}** • ${serverLabel}\n` : "";
+  const emojiPrefix = headerEmoji ? ` • ${headerEmoji}` : "";
+  const header = showHeader ? `**${username}** • ${serverLabel}${emojiPrefix}\n` : "";
 
   const parts = [];
   if (body) parts.push(body);
