@@ -440,8 +440,9 @@ function announceNetwork(ctx, kind, serverName, excludeChannelId) {
   const servers = store.countServers();
   const icon = kind === "join" ? "\u{1F310}" : "\u{1F44B}"; //globe / waving hand
   const verb = kind === "join" ? "joined" : "left";
+  const header = `**System** • ${colorize("Global Chat", "system")}\n`;
   const line =
-    `${icon} **${serverName || "a server"}** ${verb} Global Chat ` +
+    `${header}${icon} **${serverName || "a server"}** ${verb} Global Chat ` +
     `(now ${announceServers(servers)}, ${announceChannels(channels.length)})`;
 
   let sent = 0;
@@ -450,6 +451,7 @@ function announceNetwork(ctx, kind, serverName, excludeChannelId) {
     const channel = client.channels.cache.get(entry.channelId);
     if (!channel) continue;
     sent++;
+    clearGrouping(entry.channelId);
     queue
       .enqueue(`announce->${entry.channelId}`, () => channel.send(line, { silent: true }))
       .catch(() => { });
