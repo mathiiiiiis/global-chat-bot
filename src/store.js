@@ -38,28 +38,45 @@ class Store {
         added_at    INTEGER
       );
       CREATE TABLE IF NOT EXISTS relays (
-        origin_id    TEXT NOT NULL,
-        author_name  TEXT,
-        server_id    TEXT,
-        server_name  TEXT,
-        dest_channel TEXT NOT NULL,
-        dest_id      TEXT NOT NULL,
-        show_header  INTEGER NOT NULL DEFAULT 1,
-        at           INTEGER NOT NULL
+        origin_id       TEXT NOT NULL,
+        origin_channel  TEXT,
+        author_name     TEXT,
+        server_id       TEXT,
+        server_name     TEXT,
+        dest_channel    TEXT NOT NULL,
+        dest_id         TEXT NOT NULL,
+        show_header     INTEGER NOT NULL DEFAULT 1,
+        at              INTEGER NOT NULL
       );
       CREATE INDEX IF NOT EXISTS idx_relays_origin ON relays (origin_id);
+      CREATE INDEX IF NOT EXISTS idx_relays_dest ON relays (dest_id);
       CREATE INDEX IF NOT EXISTS idx_relays_at ON relays (at);
       CREATE TABLE IF NOT EXISTS counters (
         name  TEXT PRIMARY KEY,
         value INTEGER NOT NULL DEFAULT 0
-      ); 
+      );
     `);
 
-    this._migrateFromJson();
+    this._migrateSchema();
 
     const count = this.db.prepare("SELECT COUNT(*) AS n FROM channels").get().n;
     this.log.info(`store ready, ${count} synced channel(s)`);
     return this;
+  }
+
+  // ==== schema migration ====
+  //
+  // add colums to tables that predate version
+  // (only matters for upgrades)
+  _migrateSchema() {
+    const cols = this.db
+      .prepare("PRAGMA table_info(relays)")
+      .all()
+      .map((c) => c.name);
+    if (!cols.includes("origin_channel")) {
+      this.db.exec("ALTER TABLE relays ADD COLUMN origin_channel TEXT");
+      this.log.info("schema migrate: added relays.origin_channel");
+    }
   }
 
   //one-time: import legacy JSON data on first run only
@@ -164,15 +181,16 @@ class Store {
 
   // ==== relays: edit/delete tracking ====
   //
-  // copy: { originId, authorName, serverId, serverName, destChannel, destId, showHeader }
+  // copy: { originId, originChannel, authorName, serverId, serverName, destChannel, destId, showHeader }
   trackRelay(copy) {
     this.db
       .prepare(
-        `INSERT INTO relays (origin_id, author_name, server_id, server_name, dest_channel, dest_id, show_header, at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO relays (origin_id, origin_channel,author_name, server_id, server_name, dest_channel, dest_id, show_header, at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         copy.originId,
+        copy.originChannel || null,
         copy.authorName || null,
         copy.serverId || null,
         copy.serverName || null,
@@ -197,6 +215,26 @@ class Store {
 
   forgetOrigin(originId) {
     this.db.prepare("DELETE FROM relays WHERE origin_id = ?").run(originId);
+  }
+
+  //given an origin message id, find relayed copy
+  //used to point a relayed reply at right copy
+  copyInChannel(originId, destChannel) {
+    const row = this.db.prepare(
+      "SELECT dest_id AS destId FROM relays WHERE origin_id = ? AND dest_channel = ? LIMIT 1",
+    )
+      .get(originId, destChannel)
+    return row ? row.destId : null;
+  }
+
+  //reverse lookup: given a copy id, find what it was a
+  //copy of and which channel original lives in
+  relayByCopyId(destId) {
+    return this.db
+      .prepare(
+        "SELECT origin_id AS originId, origin_channel AS originChannel FROM relays WHERE dest_id = ? LIMIT 1",
+      )
+      .get(destId);
   }
 
   // ==== counters: persistent, all-time stats ====

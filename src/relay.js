@@ -10,9 +10,10 @@
 //   relaying, preventing accidental cross-server pings
 // > author grouping: if same authot posts again with no one else in between
 //   (per destination channel), drop header line
-// > qoutes and replies: nerimity jeeps these OUTSIDE content. replies live on
-//   message.replies, inline qoutes live on message.raw.quotedMessage. pill both
-//   back in as readable so a reply-only message is not relayed blank
+// > replies: user Nerimity multi-reply via replyToMessageIds. Unmapped  targets
+//   are irgnored
+// > quotes: from message.raw.quotedMessages, rendered as text so quote-only
+//   messages are never empty
 
 const { Message } = require("@nerimity/nerimity.js");
 
@@ -79,7 +80,7 @@ function propagateEdit(ctx, message) {
       ctx.config.cdnUrl,
     );
     const handle = copyHandle(ctx.client, copy.destChannel, copy.destId);
-    ctx.queue.enqueue(`edit->${copy.destChannel}`, () => handle.edit(text)).catch(() => {});
+    ctx.queue.enqueue(`edit->${copy.destChannel}`, () => handle.edit(text)).catch(() => { });
   }
 }
 
@@ -97,7 +98,7 @@ function propagateEditRaw(ctx, payload) {
       : "";
     const text = `${header}${body || "_(no text content)_"}`;
     const handle = copyHandle(ctx.client, copy.destChannel, copy.destId);
-    ctx.queue.enqueue(`edit->${copy.destChannel}`, () => handle.edit(text)).catch(() => {});
+    ctx.queue.enqueue(`edit->${copy.destChannel}`, () => handle.edit(text)).catch(() => { });
   }
 }
 
@@ -111,7 +112,7 @@ function propagateDelete(ctx, originId) {
     if (!channel) continue;
     ctx.queue
       .enqueue(`delete->${copy.destChannel}`, () => channel.deleteMessage(copy.destId))
-      .catch(() => {});
+      .catch(() => { });
   }
   ctx.store.forgetOrigin(originId);
 }
@@ -225,7 +226,6 @@ function colorize(text, serverId) {
 //build text that gets send into other channels
 //format is interntionally plain and easy to tweak
 // > with header: **username** • ServerName
-// >              (reply context if any)
 // >              message body
 // >              attachment url(s), each on its own line so they embed
 // > grouped:     header dropped, rest unchanged
@@ -239,7 +239,6 @@ function formatRelay(message, originServerName, client, showHeader, cdnUrl) {
   }
 
   const body = sanitizeMentions(message.content, client, quoteMap);
-  const replyContext = buildReplyContext(message, client);
   const attachmentLinks = attachmentUrls(message, cdnUrl);
 
   const originServerId =
@@ -248,13 +247,41 @@ function formatRelay(message, originServerName, client, showHeader, cdnUrl) {
   const header = showHeader ? `**${username}** • ${serverLabel}\n` : "";
 
   const parts = [];
-  if (replyContext) parts.push(replyContext);
   if (body) parts.push(body);
   //each url on its own line
   if (attachmentLinks.length) parts.push(attachmentLinks.join("\n"));
   if (!parts.length) parts.push("_(no text content)_");
 
   return `${header}${parts.join("\n")}`;
+}
+
+// ==== reply mapping ====
+//
+// map origin replied-to message to its detsChannel counterpart, or null
+//
+// > origin -> relayed copy
+// > copy -> origin -> dest copy
+function resolveReplyTarget(store, repliedId, destChannelId) {
+  const direct = store.copyInChannel(repliedId, destChannelId);
+  if (direct) return direct;
+
+  const src = store.relayByCopyId(repliedId);
+  if (src) {
+    if (src.originChannel && src.originChannel === destChannelId) return src.originId;
+    const copy = store.copyInChannel(src.originId, destChannelId);
+    if (copy) return copy;
+  }
+  return null;
+}
+
+//map all reply targets to ids valid in destChannel
+function resolveReplyFor(store, repliedIds, destChannelId) {
+  const out = [];
+  for (const id of repliedIds) {
+    const mapped = resolveReplyTarget(store, id, destChannelId);
+    if (mapped) out.push(mapped);
+  }
+  return out;
 }
 
 // ==== broadcast ====
@@ -303,6 +330,10 @@ function broadcast(ctx, message) {
     (message.channel && message.channel.server && message.channel.server.id) || "?";
   const groupKey = `${authorId}@${originServerId}`;
 
+  //reply targets from origin channel, resolved to dest copies before send
+  const repliedIds = message.replies ? [...message.replies.keys()] : [];
+  const originChannelId = message.channelId;
+
   store.pruneRelays(RELAY_TTL_MS); //drop expired before adding new
 
   for (const target of targets) {
@@ -328,11 +359,23 @@ function broadcast(ctx, message) {
     const label = `relay->${target.serverName || target.channelId}`;
     const destChannelId = target.channelId;
     queue
-      .enqueue(label, () => channel.send(text, { silent: true }))
+      .enqueue(label, () => {
+        //resolve replies at send time
+        //targets already exist in dest
+        const replyToMessageIds = repliedIds.length
+          ? resolveReplyFor(store, repliedIds, destChannelId)
+          : [];
+        return channel.send(text, {
+          silent: true,
+          mentionReplies: false,
+          replyToMessageIds: replyToMessageIds.length ? replyToMessageIds : undefined,
+        });
+      })
       .then((sent) => {
         if (sent) {
           store.trackRelay({
             originId: message.id,
+            originChannel: originChannelId,
             authorName: message.user ? message.user.username : "unknown",
             serverId: originServerId,
             serverName: originServerName,
@@ -359,6 +402,7 @@ module.exports = {
   sanitizeMentions,
   formatRelay,
   buildReplyContext,
+  resolveReplyTarget,
   noteCommandBots,
   isKnownBot,
   propagateEdit,
