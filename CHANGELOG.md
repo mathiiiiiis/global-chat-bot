@@ -9,6 +9,10 @@ versions.
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [0.3.0] - 2026-06-18
+
 ### Added
 
 - Replies now use Nerimity's native multi-reply: relayed copies reply to the
@@ -19,6 +23,8 @@ versions.
 - Join/leave announcements: when a server links its first channel or unlinks its
   last (or the bot is removed), a short notice is posted under a System header
   to every other linked channel. Toggle with `GC_ANNOUNCE=0`.
+- `/rules` shows the network rules (no advertising, language, conduct) and
+  links to Nerimity's Terms of Service, which all members must follow.
 
 ### Fixed
 
@@ -185,7 +191,8 @@ Project
   the environment, so `npm run debug` stayed at the configured level. Explicit
   command-line flags now take precedence over the env var.
 
-[Unreleased]: https://github.com/mathiiiiiis/global-chat-bot/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/mathiiiiiis/global-chat-bot/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/mathiiiiiis/global-chat-bot/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/mathiiiiiis/global-chat-bot/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/mathiiiiiis/global-chat-bot/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/mathiiiiiis/global-chat-bot/releases/tag/v0.1.0
