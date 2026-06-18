@@ -15,12 +15,8 @@
 const { RolePermissions } = require("@nerimity/nerimity.js");
 const { announceNetwork } = require("./relay.js");
 
-//channel-picker markup eg [#:1234...]
 const RE_CHANNEL_MENTION = /^\[#:(\d+)\]$/;
-
-//nerimity custom emojis [ce:id:name] (anim: [ace:id:name])
-//kept verbatim for consistent rendering
-const RE_CUSTOM_EMOJI = /\[a?ce:[^\]]+\]/;
+const RE_CUSTOM_EMOJI = /\[(?:w?a)?ce:(.*?):(.*?)\]/;
 
 //extracts single emoji from /setemoji args
 //accepts custom or unincode, rejects text
