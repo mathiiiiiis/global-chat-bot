@@ -9,7 +9,19 @@ versions.
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+
+- Replies now use Nerimity's native multi-reply: relayed copies reply to the
+  actual message(s) in each destination channel, mapped per channel, instead of
+  a text reply header. Targets too old to still be tracked are left unlinked.
+- `/setemoji <emoji|clear>` lets server admins set a header emoji that prefixes
+  messages relayed from their server. Accepts a custom emoji or a unicode one.
+
+### Fixed
+
+- Header grouping now resets when a native message is sent in a destination
+  channel, so a relay from the same author after someone else has spoken still
+  shows its header instead of being grouped onto an interrupted run.
 
 ## [0.2.0] - 2026-06-03
 
@@ -27,7 +39,7 @@ Nothing yet.
 
 ### Fixed
 
-- Header grouping now keys on author *and* origin server, so a message relayed
+- Header grouping now keys on author _and_ origin server, so a message relayed
   from the same user but a different server still shows its header (and the
   source server name) instead of being silently grouped with the previous one.
 - Docker not creating db
