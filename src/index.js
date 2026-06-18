@@ -21,6 +21,7 @@ const {
   propagateEdit,
   propagateEditRaw,
   propagateDelete,
+  clearGrouping,
 } = require("./relay.js");
 const { handleCommand, COMMAND_DEFS } = require("./commands.js");
 const { refreshPresence } = require("./presence.js");
@@ -67,7 +68,7 @@ ctx.refreshPresence = () => refreshPresence(ctx);
 client.on(Events.Ready, () => {
   log.info(
     `connected as ${client.user ? client.user.username : "?"} ` +
-      `(spacing ${config.minGapMs}ms, ${store.listChannels().length} channel(s) linked)`,
+    `(spacing ${config.minGapMs}ms, ${store.listChannels().length} channel(s) linked)`,
   );
   ctx.refreshPresence();
 });
@@ -76,6 +77,13 @@ client.on(Events.MessageCreate, (message) => {
   try {
     //learn bot ids from any command pattern in content
     noteCommandBots(message.content);
+
+    //a foreign message in syncec channel interrupts author grouping there
+    if (
+      store.hasChannel(message.channelId) && !(client.user && message.user && message.user.id === client.user.id)
+    ) {
+      clearGrouping(message.channelId);
+    }
 
     if (message.user) {
       if (config.ignoredUsers.has(message.user.id)) {

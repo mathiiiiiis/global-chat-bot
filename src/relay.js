@@ -44,6 +44,12 @@ function isKnownBot(id) {
 const GROUP_WINDOW_MS = 5 * 60 * 1000;
 const lastAuthorByChannel = new Map();
 
+//native messages break author grouping
+//next relay must re-show header
+function clearGrouping(channelId) {
+  lastAuthorByChannel.delete(channelId);
+}
+
 // ==== edit/delete tracking =====
 //
 // tracking now lives in store (sqlite), so edits and deleted survive
@@ -418,6 +424,7 @@ module.exports = {
   formatRelay,
   buildReplyContext,
   resolveReplyTarget,
+  clearGrouping,
   noteCommandBots,
   isKnownBot,
   propagateEdit,
