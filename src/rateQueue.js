@@ -37,7 +37,7 @@ function classifyError(err) {
     if (typeof inner.retryAfter === "number") {
       retryMs = inner.retryAfter <= 120 ? inner.retryAfter * 1000 : inner.retryAfter;
     } else if (typeof inner.ttl === "number") {
-      retryMs = inner.ttl * 1000;
+      retryMs = inner.ttl;
     }
   }
 
