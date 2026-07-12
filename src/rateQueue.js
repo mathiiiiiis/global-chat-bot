@@ -27,7 +27,7 @@ function classifyError(err) {
   let body = null;
   try {
     body = JSON.parse(message);
-  } catch {}
+  } catch { }
 
   let retryMs = null;
   if (body && typeof body == "object") {
@@ -59,6 +59,8 @@ class RateQueue {
   constructor(opts) {
     this.log = opts.logger;
     this.minGapMs = opts.minGapMs;
+    this.windowLimit = opts.windowLimit;
+    this.windowMs = opts.windowMs;
     this.maxAttempts = opts.maxAttempts;
     this.baseBackoffMs = opts.baseBackoffMs;
     this.maxBackoffMs = opts.maxBackoffMs;
@@ -67,6 +69,7 @@ class RateQueue {
     this.tasks = [];
     this.running = false;
     this.lastStartAt = 0;
+    this.sendTimes = [];
 
     //rolling counters
     this.stats = { enqueued: 0, done: 0, failed: 0, retried: 0, shed: 0 };
@@ -118,6 +121,7 @@ class RateQueue {
   async _drain() {
     while (this.tasks.length) {
       const task = this.tasks.shift();
+      await this._respectBudget();
       await this._respectGap();
       await this._runTask(task);
     }
@@ -134,6 +138,25 @@ class RateQueue {
       await sleep(wait);
     }
     this.lastStartAt = Date.now();
+    this.sendTimes.push(this.lastStartAt);
+  }
+
+  //sliding window rate limit
+  //sleep until budgets refills to avoid 429s
+  //minGap only smooths bursts
+  async _respectBudget() {
+    if (!this.windowLimit) return;
+    const now = Date.now();
+    const cutoff = now - this.windowMs;
+    while (this.sendTimes.length && this.sendTimes[0] <= cutoff) this.sendTimes.shift();
+
+    if (this.sendTimes.length >= this.windowLimit) {
+      const wait = this.sendTimes[0] + this.windowMs - now + 250;
+      this.log.debug(`send budget spent (${this.windowLimit}/${this.windowMs}ms, waitinh ${wait}ms`);
+      await sleep(wait);
+      const cutoff2 = Date.now() - this.windowMs;
+      while (this.sendTimes.length && this.sendTimes[0] <= cutoff2) this.sendTimes.shift();
+    }
   }
 
   async _runTask(task) {
@@ -164,18 +187,17 @@ class RateQueue {
       return;
     }
 
-    const delay = this._backoffFor(task.attempts, verdict.retryMs);
+    let delay = this._backoffFor(task.attempts, verdict.retryMs);
+    if (verdict.isRateLimit) {
+      delay = Math.max(delay, this.windowMs + 500);
+    }
     this.stats.retried++;
     this.log.warn(
       `retrying "${task.label}" in ${delay}ms ` +
-        `(attempt ${task.attempts}/${this.maxAttempts}, ` +
-        `${verdict.isRateLimit ? "rate-limited" : "transient"})`,
+      `(attempt ${task.attempts}/${this.maxAttempts}, ` +
+      `${verdict.isRateLimit ? "rate-limited" : "transient"})`,
     );
 
-    //pull it back at front so failed item retries before newer work,
-    //then pause whole queue for backoff window. Pausing globally is
-    //deliberate: if its rate-limited, blasting other channels in the
-    //meantime just makes it worse
     await sleep(delay);
     this.tasks.unshift(task);
   }

@@ -47,6 +47,8 @@ const store = new Store(config.dbFile, log.child("store"), config.dataFile).load
 const queue = new RateQueue({
   logger: log.child("queue"),
   minGapMs: config.minGapMs,
+  windowLimit: config.windowLimit,
+  windowMs: config.windowMs,
   maxAttempts: config.maxAttempts,
   baseBackoffMs: config.baseBackoffMs,
   maxBackoffMs: config.maxBackoffMs,
@@ -69,7 +71,8 @@ ctx.refreshPresence = () => refreshPresence(ctx);
 client.on(Events.Ready, () => {
   log.info(
     `connected as ${client.user ? client.user.username : "?"} ` +
-    `(spacing ${config.minGapMs}ms, ${store.listChannels().length} channel(s) linked)`,
+    `(spacing ${config.minGapMs}ms, budget ${config.windowLimit}/${config.windowMs / 1000}s, ` +
+    `${store.listChannels().length} channel(s) linked)`,
   );
   ctx.refreshPresence();
 });

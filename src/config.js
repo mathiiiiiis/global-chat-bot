@@ -7,6 +7,8 @@
 //
 // > GC_TOKEN         – required: Bot Token
 // > GC_MIN_GAP_MS    - min spacing between outbound API calls
+// > GC_WINDOW_LIMIT  – max sends per window (server allow 20/20s)
+// > GC_WINDOW_MS     – window length in ms
 // > GC_MAX_ATTEMPS   – how many times to retry sending
 // > GC_BASE_BACKOFF  - first backoff step
 // > GC_MAX_BACKOFF   – backoff ceiling
@@ -35,6 +37,8 @@ const config = {
 
   //rate / queue
   minGapMs: num(process.env.GC_MIN_GAP_MS, 350),
+  windowLimit: num(process.env.GC_WINDOW_LIMIT, 18),
+  windowMs: num(process.env.GC_WINDOW_MS, 20000),
   maxAttempts: num(process.env.GC_MAX_ATTEMPTS, 5),
   baseBackoffMs: num(process.env.GC_BASE_BACKOFF, 1000),
   maxBackoffMs: num(process.env.GC_MAX_BACKOFF, 30000),
