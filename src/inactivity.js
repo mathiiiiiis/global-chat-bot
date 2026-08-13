@@ -14,6 +14,7 @@ const { makeLogger } = require("./logger.js");
 const log = makeLogger("inactive");
 
 const HEARTBEAT_KEY = "heartbeat"
+const FIRST_SWEEP_DELAY_MS = 60000;
 
 function days(ms) {
   return Math.floor(ms / 86400000);
@@ -43,7 +44,11 @@ function refundDowntime(ctx) {
   const last = store.getMeta(HEARTBEAT_KEY);
   const now = Date.now();
   store.setMeta(HEARTBEAT_KEY, now);
-  if (!last) return;
+  if (!last) {
+    //first run with pruning enabled: no history to reason about, start clock
+    log.info("no heartbeat found, starting inactivity clock fresh");
+    return;
+  }
 
   const gap = now - last;
   if (gap <= config.pruneSweepMs * 2) return;
@@ -64,11 +69,35 @@ function sweep(ctx) {
 
   let warned = 0;
   let removed = 0;
+  const grace = config.pruneAfterMs - config.pruneWarnMs;
+
+  // ==== stage 1: warn ====
+  if (grace > 0) {
+    for (const entry of store.listInactiveChannels(now - config.pruneWarnMs)) {
+      if (entry.warnedAt) continue;
+      const sent = notify(
+        ctx,
+        entry.channelId,
+        systemLine(
+          `\u{23F3} This channel has been quiet for ${days(config.pruneWarnMs)} days. ` +
+          `It will be unlinked after another ${days(grace)} days. Send a message to keep it linked.`
+        ),
+      );
+      if (!sent) continue;
+      store.markWarned(entry.channelId);
+      warned++;
+      log.debug("warned inactive channel", {
+        channel: entry.channelId,
+        server: entry.serverName,
+      });
+    }
+  }
 
   // ==== stage 2: remove ====
   for (const entry of store.listInactiveChannels(now - config.pruneAfterMs)) {
     if (total - removed <= 1) break;
     if (removed >= config.pruneMaxPerSweep) break;
+    if (grace > 0 && (!entry.warnedAt || now - entry.warnedAt < grace)) continue;
 
     notify(
       ctx,
@@ -87,29 +116,6 @@ function sweep(ctx) {
       server: entry.serverName,
       quietDays: days(now - (entry.lastActiveAt || 0)),
     });
-  }
-
-  // ==== stage 1: warn ====
-  if (config.pruneWarnMs < config.pruneAfterMs) {
-    const grace = days(config.pruneAfterMs - config.pruneWarnMs);
-    for (const entry of store.listInactiveChannels(now - config.pruneWarnMs)) {
-      if (entry.warnedAt) continue;
-      const sent = notify(
-        ctx,
-        entry.channelId,
-        systemLine(
-          `\u{23F3} This channel has been quiet for ${days(config.pruneWarnMs)} days. ` +
-          `It will be unlinked after another ${grace} days. Send a message to keep it linked.`
-        ),
-      );
-      if (!sent) continue;
-      store.markWarned(entry.channelId);
-      warned++;
-      log.debug("warned inactive channel", {
-        channel: entry.channelId,
-        server: entry.serverName,
-      });
-    }
   }
 
   if (removed) ctx.refreshPresence();
@@ -140,10 +146,14 @@ function startInactivitySweep(ctx) {
     }
   };
 
-  run();
+  const first = setTimeout(run, FIRST_SWEEP_DELAY_MS);
+  if (first.unref) first.unref();
   const timer = setInterval(run, config.pruneSweepMs);
   if (timer.unref) timer.unref();
-  return () => clearInterval(timer);
+  return () => {
+    clearTimeout(first);
+    clearInterval(timer);
+  };
 }
 
 module.exports = { startInactivitySweep, sweep };

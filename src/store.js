@@ -100,6 +100,9 @@ class Store {
     }
     if (!chCols.includes("warned_at")) {
       this.db.exec("ALTER TABLE channels ADD COLUMN warned_at INTEGER");
+      this.db
+        .prepare("UPDATE channels SET last_active_at = ? WHERE last_active_at IS NULL")
+        .run(Date.now());
       this.log.info("schema migrate: added channels.warned_at");
     }
   }
@@ -224,8 +227,9 @@ class Store {
         `SELECT channel_id AS channelId, server_id AS serverId, server_name AS serverName,
                 last_active_at AS lastActiveAt, warned_at AS warnedAt
          FROM channels
-         WHERE COALESCE(last_active_at, added_at, 0) < ?
-         ORDER BY COALESCE(last_active_at, added_at, 0) ASC`,
+         WHERE COALESCE(last_active_at, added_at) IS NOT NULL
+           AND COALESCE(last_active_at, added_at) < ?
+         ORDER BY COALESCE(last_active_at, added_at) ASC`,
       )
       .all(cutoff);
   }
