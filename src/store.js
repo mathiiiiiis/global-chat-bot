@@ -95,14 +95,14 @@ class Store {
       .map((c) => c.name);
     if (!chCols.includes("last_active_at")) {
       this.db.exec("ALTER TABLE channels ADD COLUMN last_active_at INTEGER");
-      this.db.exec("UPDATE channels SET last_active_at = added_at WHERE last_active_at IS NULL");
+      //added_at is not a stand-in for activity, it marks old channels as stale
+      this.db
+        .prepare("UPDATE channels SET last_active_at = ? WHERE last_active_at IS NULL")
+        .run(Date.now());
       this.log.info("schema migrate: added channels.last_active_at");
     }
     if (!chCols.includes("warned_at")) {
       this.db.exec("ALTER TABLE channels ADD COLUMN warned_at INTEGER");
-      this.db
-        .prepare("UPDATE channels SET last_active_at = ? WHERE last_active_at IS NULL")
-        .run(Date.now());
       this.log.info("schema migrate: added channels.warned_at");
     }
   }
