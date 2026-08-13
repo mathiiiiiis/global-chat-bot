@@ -9,14 +9,44 @@ services:
     container_name: global-chat-bot
     restart: unless-stopped
     environment:
+      # ==== required ====
       GC_TOKEN: ${GC_TOKEN:?GC_TOKEN is required}
+
+      # ==== rate / queue ====
       GC_MIN_GAP_MS: ${GC_MIN_GAP_MS:-350}
+      GC_WINDOW_LIMIT: ${GC_WINDOW_LIMIT:-18}
+      GC_WINDOW_MS: ${GC_WINDOW_MS:-20000}
       GC_MAX_ATTEMPTS: ${GC_MAX_ATTEMPTS:-5}
-      GC_ALLOW_ANYONE: ${GC_ALLOW_ANYONE:-0}
-      GC_LOG_LEVEL: ${GC_LOG_LEVEL:-info}
-      GC_REGISTER_ON_START: ${GC_REGISTER_ON_START:-1}
+      GC_BASE_BACKOFF: ${GC_BASE_BACKOFF:-1000}
+      GC_MAX_BACKOFF: ${GC_MAX_BACKOFF:-30000}
+      GC_QUEUE_MAX: ${GC_QUEUE_MAX:-5000}
+
+      # ==== persistence ====
       GC_DATA_FILE: /data/synced.json
       GC_DB_FILE: /data/store.db
+
+      # ==== permissions ====
+      GC_ALLOW_ANYONE: ${GC_ALLOW_ANYONE:-0}
+      GC_ANNOUNCE: ${GC_ANNOUNCE:-1}
+      GC_REGISTER_ON_START: ${GC_REGISTER_ON_START:-1}
+      GC_RELAY_BOTS: ${GC_RELAY_BOTS:-0}
+      GC_IGNORE_USERS: ${GC_IGNORE_USERS:-}
+
+      # ==== inactivity ====
+      GC_INACTIVE_PRUNE: ${GC_INACTIVE_PRUNE:-1}
+      GC_INACTIVE_DAYS: ${GC_INACTIVE_DAYS:-30}
+      GC_INACTIVE_WARN_DAYS: ${GC_INACTIVE_WARN_DAYS:-23}
+      GC_INACTIVE_SWEEP_MIN: ${GC_INACTIVE_SWEEP_MIN:-60}
+      GC_INACTIVE_MAX_PER_SWEEP: ${GC_INACTIVE_MAX_PER_SWEEP:-3}
+
+      # ==== logging ====
+      GC_LOG_LEVEL: ${GC_LOG_LEVEL:-info}
+
+      # ==== instance overrides ====
+      GC_API_URL: ${GC_API_URL:-}
+      GC_WS_URL: ${GC_WS_URL:-}
+      GC_CDN_URL: ${GC_CDN_URL:-https://cdn.nerimity.com/}
+
     volumes:
       - gc-data:/data
     logging:
