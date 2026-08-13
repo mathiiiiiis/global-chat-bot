@@ -50,6 +50,18 @@ function clearGrouping(channelId) {
   lastAuthorByChannel.delete(channelId);
 }
 
+//activity write throttles
+const TOUCH_THROTTLE_MS = 60 * 1000;
+const lastTouchByChannel = new Map();
+
+function touchOrigin(store, channelId) {
+  const now = Date.now();
+  const last = lastTouchByChannel.get(channelId);
+  if (last && now - last < TOUCH_THROTTLE_MS) return;
+  lastTouchByChannel.set(channelId, now);
+  store.touchChannel(channelId, now);
+}
+
 // ==== edit/delete tracking =====
 //
 // tracking now lives in store (sqlite), so edits and deleted survive
@@ -322,6 +334,8 @@ function broadcast(ctx, message) {
     return 0;
   }
 
+  touchOrigin(store, message.channelId);
+
   const originServerName =
     (message.channel && message.channel.server && message.channel.server.name) || "a server";
 
@@ -467,6 +481,7 @@ module.exports = {
   buildReplyContext,
   resolveReplyTarget,
   clearGrouping,
+  colorize,
   announceNetwork,
   noteCommandBots,
   isKnownBot,

@@ -31,11 +31,17 @@ class Store {
     this.db.exec("PRAGMA journal_mode = WAL");
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS channels (
-        channel_id  TEXT PRIMARY KEY,
-        server_id   TEXT,
-        server_name TEXT,
-        added_by    TEXT,
-        added_at    INTEGER
+        channel_id      TEXT PRIMARY KEY,
+        server_id       TEXT,
+        server_name     TEXT,
+        added_by        TEXT,
+        added_at        INTEGER,
+        last_active_at  INTEGER,
+        warned_at       INTEGER
+      );
+      CREATE TABLE IF NOT EXISTS meta (
+        key   TEXT PRIMARY KEY,
+        value INTEGER NOT NULL
       );
       CREATE TABLE IF NOT EXISTS relays (
         origin_id       TEXT NOT NULL,
@@ -81,6 +87,20 @@ class Store {
     if (!cols.includes("origin_channel")) {
       this.db.exec("ALTER TABLE relays ADD COLUMN origin_channel TEXT");
       this.log.info("schema migrate: added relays.origin_channel");
+    }
+
+    const chCols = this.db
+      .prepare("PRAGMA table_info(channels)")
+      .all()
+      .map((c) => c.name);
+    if (!chCols.includes("last_active_at")) {
+      this.db.exec("ALTER TABLE channels ADD COLUMN last_active_at INTEGER");
+      this.db.exec("UPDATE channels SET last_active_at = added_at WHERE last_active_at IS NULL");
+      this.log.info("schema migrate: added channels.last_active_at");
+    }
+    if (!chCols.includes("warned_at")) {
+      this.db.exec("ALTER TABLE channels ADD COLUMN warned_at INTEGER");
+      this.log.info("schema migrate: added channels.warned_at");
     }
   }
 
@@ -140,7 +160,8 @@ class Store {
     return this.db
       .prepare(
         `SELECT channel_id AS channelId, server_id AS serverId, server_name AS serverName,
-                added_by AS addedBy, added_at AS addedAt
+                added_by AS addedBy, added_at AS addedAt,
+                last_active_at AS lastActiveAt, warned_at AS warnedAt
          FROM channels WHERE channel_id = ?`,
       )
       .get(channelId);
@@ -152,13 +173,15 @@ class Store {
   addChannel(entry) {
     this.db
       .prepare(
-        `INSERT INTO channels (channel_id, server_id, server_name, added_by, added_at)
-         VALUES (?, ?, ?, ?, ?)
+        `INSERT INTO channels (channel_id, server_id, server_name, added_by, added_at, last_active_at, warned_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT(channel_id) DO UPDATE SET
            server_id = excluded.server_id,
            server_name = excluded.server_name,
            added_by = excluded.added_by,
-           added_at = excluded.added_at`,
+           added_at = excluded.added_at,
+           last_active_at = excluded.last_active_at,
+           warned_at = NULL`,
       )
       .run(
         entry.channelId,
@@ -166,6 +189,8 @@ class Store {
         entry.serverName || null,
         entry.addedBy || null,
         Date.now(),
+        Date.now(),
+        null,
       );
     this.log.debug(`store add ${entry.channelId}`, { server: entry.serverName });
   }
@@ -182,6 +207,61 @@ class Store {
     const info = this.db.prepare("DELETE FROM channels WHERE server_id = ?").run(serverId);
     if (info.changes) this.log.debug(`store remove server ${serverId}`, { channels: info.changes });
     return info.changes;
+  }
+
+  // ==== activity ====
+
+  touchChannel(channelId, at) {
+    this.db
+      .prepare("UPDATE channels SET last_active_at = ?, warned_at = NULL WHERE channel_id = ?")
+      .run(at || Date.now(), channelId);
+  }
+
+  //channels quiet since cutoff, oldest first
+  listInactiveChannels(cutoff) {
+    return this.db
+      .prepare(
+        `SELECT channel_id AS channelId, server_id AS serverId, server_name AS serverName,
+                last_active_at AS lastActiveAt, warned_at AS warnedAt
+         FROM channels
+         WHERE COALESCE(last_active_at, added_at, 0) < ?
+         ORDER BY COALESCE(last_active_at, added_at, 0) ASC`,
+      )
+      .all(cutoff);
+  }
+
+  markWarned(channelId) {
+    this.db.prepare("UPDATE channels SET warned_at = ? WHERE channel_id = ?").run(Date.now(), channelId);
+  }
+
+  //shift every channels clock forward
+  creditDowntime(byMs) {
+    const now = Date.now();
+    const info = this.db
+      .prepare(
+        `UPDATE channels SET
+           last_active_at = MIN(?, COALESCE(last_active_at, added_at, 0) + ?),
+           warned_at = CASE WHEN warned_at IS NULL THEN NULL ELSE MIN(?, warned_at + ?) END`,
+      )
+      .run(now, byMs, now, byMs);
+    return info.changes;
+  }
+
+  // ==== meta ====
+  //
+  // small key/value ints
+  setMeta(key, value) {
+    this.db
+      .prepare(
+        `INSERT INTO meta (key, value) VALUES (?, ?)
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+      )
+      .run(key, value);
+  }
+
+  getMeta(key) {
+    const row = this.db.prepare("SELECT value FROM meta WHERE key = ?").get(key);
+    return row ? row.value : null;
   }
 
   // ==== relays: edit/delete tracking ====

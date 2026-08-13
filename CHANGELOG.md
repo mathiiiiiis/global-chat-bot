@@ -9,7 +9,19 @@ versions.
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+
+- Inactivity pruning: quiet channels get warned at 23d and unlinked at 30d, and
+  a message resets the clock. Downtime is refunded so an outage does not prune
+  the network. Off with `GC_INACTIVE_PRUNE=0`.
+- `/status` shows how long the channel has been quiet and when it gets unlinked.
+
+### Fixed
+
+- Sliding-window send budget in the queue (`GC_WINDOW_LIMIT`/`GC_WINDOW_MS`);
+  the min gap alone let bursts earn 429s.
+- Retries stalled for hours: the server's `ttl` hint is already in ms but was
+  multiplied by 1000 like `retryAfter`.
 
 ## [0.3.0] - 2026-06-18
 

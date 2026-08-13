@@ -26,6 +26,7 @@ const {
 } = require("./relay.js");
 const { handleCommand, COMMAND_DEFS } = require("./commands.js");
 const { refreshPresence } = require("./presence.js");
+const { startInactivitySweep } = require("./inactivity.js");
 
 setLevel();
 const log = makeLogger("bot");
@@ -67,6 +68,9 @@ const ctx = {
 //let command/relay trigger presence refresh
 ctx.refreshPresence = () => refreshPresence(ctx);
 
+//inactivity sweep timer handle
+let stopSweep = null;
+
 // ==== events ====
 client.on(Events.Ready, () => {
   log.info(
@@ -75,6 +79,8 @@ client.on(Events.Ready, () => {
     `${store.listChannels().length} channel(s) linked)`,
   );
   ctx.refreshPresence();
+  if (stopSweep) stopSweep();
+  stopSweep = startInactivitySweep(ctx);
 });
 
 client.on(Events.MessageCreate, (message) => {
@@ -200,6 +206,7 @@ function shutdown(signal) {
   if (shuttingDown) return;
   shuttingDown = true;
   log.info(`got ${signal}, flushing store and exiting`);
+  if (stopSweep) stopSweep();
   store.saveNow();
   store.close();
   process.exit(0);

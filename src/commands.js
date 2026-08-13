@@ -228,12 +228,28 @@ function handleStatus(ctx, message) {
   const allTime = ctx.store.getCounter("relayed");
   const q = ctx.queue.stats;
 
+  let activity = "";
+  if (linked && ctx.config.prune) {
+    const entry = ctx.store.getChannel(message.channelId);
+    const quiet = Date.now() - (entry.lastActiveAt || entry.addedAt || Date.now());
+    const afterDays = Math.round(ctx.config.pruneAfterMs / 86400000);
+    const left = Math.ceil((ctx.config.pruneAfterMs - quiet) / 86400000);
+
+    let fate;
+    if (total <= 1) fate = "kept while it is the only channel in the network";
+    else if (left > 0) fate = `unlinked after ${afterDays}d quiet, ${left}d left`;
+    else fate = `unlinked after ${afterDays}d quiet, due on the next sweep`;
+
+    activity = `> last message here: ${Math.floor(quiet / 86400000)}d ago (${fate})\n`;
+  }
+
   reply(
     ctx,
     message,
     `Global Chat status:\n` +
     `> this channel: ${linked ? "linked" : "not linked"}\n` +
     `> channels in network: ${total}\n` +
+    activity +
     `> relayed: ${allTime} all-time (${q.done} this session)\n` +
     `> queue: ${ctx.queue.size} waiting, ${q.retried} retried, ${q.failed} failed`,
   );
